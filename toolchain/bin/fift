@@ -1,0 +1,3 @@
+#!/bin/bash -e
+
+$TONLIB_HOME/build/fift "$@"

@@ -1,0 +1,3 @@
+#!/bin/bash -e
+
+/home/daniil/repos/ton/build/crypto/func -WRS -o "$(basename $1 .fc).fif" "$TONLIB_HOME/crypto/smartcont/stdlib.fc" "$@"
