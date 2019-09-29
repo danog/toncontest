@@ -1,1 +1,4 @@
 ton-db-dir
+*.pk
+*.addr
+*.boc

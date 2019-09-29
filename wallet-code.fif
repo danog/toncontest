@@ -40,14 +40,15 @@ PROGRAM{
       SWAP
       SETCODE
     }>ELSE<{
-      WHILEEND:<{
+      WHILE:<{
         DUP
         SREFS
+      }>DO<{
+        8 LDU
+        LDREF
+        s0 s2 XCHG
+        SENDRAWMSG
       }>
-      8 LDU
-      LDREF
-      s0 s2 XCHG
-      SENDRAWMSG
     }>
     ENDS
     INC
@@ -63,4 +64,3 @@ PROGRAM{
     32 PLDU
   }>
 }END>c
-2 boc+>B "RS" B>file
