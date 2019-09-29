@@ -1,3 +1,8 @@
 #!/bin/bash -e
 
-/home/daniil/repos/ton/build/crypto/func -WRS -o "$(basename $1 .fc).fif" "$TONLIB_HOME/crypto/smartcont/stdlib.fc" "$@"
+[ $# -eq 0 ] && {
+    echo "No arguments provided!"
+    exit 1
+}
+
+$TONLIB_HOME/build/crypto/func -WRS -o "$(basename $1 .fc 2>/dev/null).fif" "$TONLIB_HOME/crypto/smartcont/stdlib.fc" "$@"

@@ -1,0 +1,3 @@
+#!/bin/bash -e
+
+$TONLIB_HOME/build/crypto/lite-client/lite-client -C $TONLIB_HOME/build/ton-lite-client-test1.config.json -D $TONLIB_HOME/../ton-db-dir "$@"

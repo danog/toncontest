@@ -24,4 +24,11 @@ cmake --build . --target lite-client
 cmake --build . --target fift
 cmake --build . --target func
 
+rm -f ton-lite-client-test1.config.json
+wget https://test.ton.org/ton-lite-client-test1.config.json
+
 cd ../..
+
+echo ""
+echo "DONE! Restart your shell to apply changes and use the new fift, funcompile and lite-client commands."
+echo ""
