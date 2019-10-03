@@ -1,7 +1,10 @@
 "Asm.fif" include
 "TonUtil.fif" include
 
-{ ."usage: " @' $0 type ." <workchain-id> [<filename-base>]" cr
+2 : k
+
+{ ."usage: " @' $0 type ." <workchain-id> <>" cr
+  cr
   ."Creates a new advanced wallet in specified workchain, with private key saved to or loaded from <filename-base>.pk" cr
   ."('new-wallet.pk' by default)" cr 1 halt
 } : usage

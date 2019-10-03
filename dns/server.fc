@@ -1,0 +1,51 @@
+;; Simple wallet smart contract
+
+() recv_internal(slice in_msg) impure {
+}
+
+() recv_external(slice in_msg) impure {
+  ;; do nothing for external messages
+}
+
+;; Methods
+
+
+;; VarHashmap / VarHashmapE, with variable-length keys
+;;
+;;vhm_edge#_ {n:#} {X:Type} {l:#} {m:#} label:(HmLabel ~l n) 
+;;           {n = (~m) + l} node:(VarHashmapNode m X) 
+;;           = VarHashmap n X;
+;;vhmn_leaf$00 {n:#} {X:Type} value:X = VarHashmapNode n X;
+;;vhmn_fork$01 {n:#} {X:Type} left:^(VarHashmap n X) 
+;;             right:^(VarHashmap n X) value:(Maybe X) 
+;;             = VarHashmapNode (n + 1) X;
+;;vhmn_cont$1 {n:#} {X:Type} branch:Bit child:^(VarHashmap n X) 
+;;            value:X = VarHashmapNode (n + 1) X;
+
+;; nothing$0 {X:Type} = Maybe X;
+;; just$1 {X:Type} value:X = Maybe X;
+
+;;vhme_empty$0 {n:#} {X:Type} = VarHashmapE n X;
+;;vhme_root$1 {n:#} {X:Type} root:^(VarHashmap n X) 
+;;            = VarHashmapE n X;
+
+;; Search for domain in database
+(cell) search(slice domain) {
+  var ds = get_data().begin_parse();
+  var notEmpty = ds~load_int(1);
+  ;; Check if has hashmap
+  throw_if(30, 1 != notEmpty);
+  ;; 
+  return begin_cell().end_cell();
+}
+
+
+;; Seqno for registration
+int seqno() method_id {
+  return get_data().begin_parse().preload_uint(32);
+}
+
+(int, cell) dnsresolve(slice domain, int category) method_id {
+  var result = begin_cell();
+  return (result.count_bits() / 8, result.end_cell());
+}

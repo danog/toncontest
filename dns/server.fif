@@ -1,0 +1,36 @@
+"Asm.fif" include
+// automatically generated from `/home/daniil/repos/contest/lib/crypto/smartcont/stdlib.fc` `server.fc` 
+PROGRAM{
+  DECLPROC recv_internal
+  DECLPROC recv_external
+  DECLPROC search
+  85143 DECLMETHOD seqno
+  123660 DECLMETHOD dnsresolve
+  recv_internal PROC:<{
+    DROP
+  }>
+  recv_external PROC:<{
+    DROP
+  }>
+  search PROC:<{
+    DROP
+    30 THROW
+    NEWC
+    ENDC
+  }>
+  seqno PROC:<{
+    c4 PUSH
+    CTOS
+    32 PLDU
+  }>
+  dnsresolve PROC:<{
+    2DROP
+    NEWC
+    DUP
+    BBITS
+    3 RSHIFT#
+    SWAP
+    ENDC
+  }>
+}END>c
+2 boc+>B "RS" B>file

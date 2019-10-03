@@ -1,0 +1,7 @@
+
+// Minimum signatures to send order
+3 : k
+// Maximum signatures per order
+10 : n
+
+
