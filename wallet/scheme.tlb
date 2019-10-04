@@ -17,7 +17,7 @@ wrappedMessage$_ expires_at:uint32 seqno:uint32 body:(ModeMessage X) = WrappedMe
 multiSigWrapper$0 signatures:(HashmapE 4 ^Signature) message:(WrappedMessage X) = MultiSigWrapper X;
 //multiSigFuture$1 = MultiSigWrapper X;
 
-// Message constructor for wallet storagesince 
+// Message constructor for wallet storage
 // No seqno: we can't regenerate the hash of a stored message.
 // That's a tradeoff to save grams on storage (and storing the seqno would be pointless anyway, 
 // since all integrity checks were already made when the message was first stored).
@@ -30,12 +30,11 @@ storedMessage$_ expires_at:uint32 signatures:(HashmapE 4 ^Signature) = StoredMes
 
 
 // Not doing explicit versioning here, since the structure of the storage can only change after an update of the onchain wallet code
-// Max 256 buffered messages, to avoid excessive memory usage, could be tweaked.
-// Max 10 keys (not sure about this, the contest instruction file says 10 in one place and 100 in another, so I chose 10)
+// Max 10 keys (not sure about this, the contest instruction file says 10 in one place and 100 in another, so I chose 10 => 16 => 2^(4) )
 // Min 3 signatures per message
 // ^StoredMessage because 256*(40+) > 1023
 //
-storage$_ seqno:uint32 minSigs:(## 4) keys:(HashmapE 4 ^PubKey) messages:(HashmapE 8 ^(StoredMessage X)) 
+storage$_ seqno:uint32 minSigs:(## 4) keys:(HashmapE 4 ^PubKey) messages:(HashmapE 256 ^(StoredMessage X)) 
           {k:(## 4)} { k > 0 } { k >= 3 } { n >= k } { n <= 10 } = Storage X;
 
 // TON stuff

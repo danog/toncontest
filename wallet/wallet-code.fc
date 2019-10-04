@@ -45,7 +45,7 @@
   ;; We will need the hash anyway
   var hash = slice_hash(in_msg);
   
-  ;; storage$_ seqno:uint32 minSigs:(## 4) keys:(HashmapE 4 ^PubKey) messages:(HashmapE 8 ^(StoredMessage X)) = Storage X;
+  ;; storage$_ seqno:uint32 minSigs:(## 4) keys:(HashmapE 4 ^PubKey) messages:(HashmapE 256 ^(StoredMessage X)) = Storage X;
   var stored_data = get_data().begin_parse();
   var (stored_seqno, min_sigs, keys, messages) = (stored_data~load_uint(32), stored_data~load_uint(4), stored_data~load_dict(), stored_data~load_dict());
   stored_data.end_parse();
@@ -128,7 +128,7 @@
   }
   messages = collect_garbage(messages);
 
-  ;; storage$_ seqno:uint32 minSigs:(## 4) keys:(HashmapE 4 ^PubKey) messages:(HashmapE 8 ^(Message X)) = Storage X;
+  ;; storage$_ seqno:uint32 minSigs:(## 4) keys:(HashmapE 4 ^PubKey) messages:(HashmapE 256 ^(Message X)) = Storage X;
   set_data(begin_cell().store_uint(stored_seqno + 1, 32).store_uint(min_sigs, 4).store_dict(keys).store_dict(messages).end_cell());
 }
 
