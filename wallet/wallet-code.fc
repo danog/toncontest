@@ -9,7 +9,7 @@
     if (ok) {
       ;; expiry <= now
       if (cs~load_uint(32) <= now()) {
-        messages.udict_delete?(256, hash);
+        messages~udict_delete?(256, hash);
       }
     }
   } until (~ ok);
@@ -45,7 +45,7 @@
   ;; We will need the hash anyway
   var hash = slice_hash(in_msg);
   
-  ;; storage$_ seqno:uint32 minSigs:(## 4) keys:(HashmapE 4 (## 256)) messages:(HashmapE 8 ^(Message X)) = Storage X;
+  ;; storage$_ seqno:uint32 minSigs:(## 4) keys:(HashmapE 4 ^PubKey) messages:(HashmapE 8 ^(StoredMessage X)) = Storage X;
   var stored_data = get_data().begin_parse();
   var (stored_seqno, min_sigs, keys, messages) = (stored_data~load_uint(32), stored_data~load_uint(4), stored_data~load_dict(), stored_data~load_dict());
   stored_data.end_parse();
@@ -58,18 +58,21 @@
     
   ;; If old message
   } else {
-    (var storedMessage, var ok) = messages.udict_get?(256, hash);
+    var (storedMessage, ok) = messages.udict_get?(256, hash);
     ;; Throw if old message and doesn't exist in db
     throw_unless(35, ok);
 
+    ;; storedMessage$_ expires_at:uint32 signatures:(HashmapE 4 ^Signature) = StoredMessage X;
+    ;;
     ;; Skip expiry
-    storedMessage.skip_bits(32);
+    ;; 
     ;; No seqno: we can't regenerate the hash of a stored message.
     ;; That's a tradeoff to save grams on storage (and storing the seqno would be pointless anyway, 
     ;; since all integrity checks were already made when the message was first stored).
     ;;
     ;; Load signatures
-    var storedMessageSignatures = storedMessage.load_dict();
+    var storedMessageSignatures = storedMessage~load_ref().begin_parse().skip_bits(32).preload_dict();
+    storedMessage.end_parse();
   }
 
   accept_message();
@@ -79,15 +82,24 @@
   do {
     (idx, var signature, var ok) = signatures.udict_get_next?(4, idx);
     if (ok) {
-      (var public_key, var kok) = keys.udict_get?(4, idx);
+      var (public_key, kok) = keys.udict_get?(4, idx);
       throw_unless(36, kok);
-      throw_unless(37, check_signature(hash, signature, public_key~load_uint(256)));
+      
+      var key = public_key~load_ref().begin_parse().preload_uint(256);
+      var signature_cell = signature~load_ref();
+      var signature_slice = signature_cell.begin_parse();
+      var slice_copy = signature_slice;
+      
+      signature_slice.end_parse();
+      public_key.end_parse();
 
-      storedMessageSignatures.udict_set_ref(4, idx, signature);
+      throw_unless(37, check_signature(hash, slice_copy, key));
+
+      storedMessageSignatures~udict_set_ref(4, idx, signature_cell);
     }
   } until (~ ok);
   
-  var message = message_data~load_ref();
+  var (mode, message) = (message_data~load_uint(8), message_data~load_ref());
   message_data.end_parse();
 
   var count = 0;
@@ -99,20 +111,20 @@
       count += 1;
       if (count >= min_sigs) {
         send_raw_message(message, mode);
-        messages.udict_delete?(256, hash);
+        messages~udict_delete?(256, hash);
         ok = 0;
       }
     }
   } until (~ ok);
   
-  ;; storedMessage$_ expires_at:uint32 signatures:(HashmapE 4 ^Signature) body:^(Message X) = StoredMessage X;
+  ;; storedMessage$_ expires_at:uint32 signatures:(HashmapE 4 ^Signature) = StoredMessage X;
   ;;
   ;; But do we __have to__ store the body?
   ;; I mean, each incoming order already has the full message body, why store it if you can reuse it?
-  ;; Anyway, for now I'm just storing this.
+  ;; Anyway, for now I'm storing the body. (Scratch that, it's a waste of storage, just store the hash)
   ;;
   if (count < min_sigs) {
-    messages.udict_set(256, hash, begin_cell().store_uint(expires_at, 32).store_dict(storedMessageSignatures).store_ref(message).end_cell());
+    messages~udict_set_ref(256, hash, begin_cell().store_uint(expires_at, 32).store_dict(storedMessageSignatures).end_cell());
   }
   messages = collect_garbage(messages);
 
