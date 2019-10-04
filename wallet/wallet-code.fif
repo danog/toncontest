@@ -1,12 +1,12 @@
 "Asm.fif" include
 // automatically generated from `/home/daniil/repos/contest/lib/crypto/smartcont/stdlib.fc` `wallet-code.fc` 
 PROGRAM{
-  DECLPROC collect_garbage
+  DECLPROC ~collect_garbage
   DECLPROC store_db
   DECLPROC recv_internal
   DECLPROC recv_external
   85143 DECLMETHOD seqno
-  collect_garbage PROC:<{
+  ~collect_garbage PROC:<{
     -1 PUSHINT
     UNTIL:<{
       OVER
@@ -17,8 +17,8 @@ PROGRAM{
       DUP
       IF:<{
         s0 s2 XCHG
-        32 LDU
-        DROP
+        SKIPDICT
+        32 PLDU
         NOW
         LEQ
         IF:<{
@@ -75,15 +75,14 @@ PROGRAM{
     LDDICT
     LDDICT
     ENDS
-    s3 PUSH
     NEWDICT
-    s0 s7 XCHG
+    s4 s6 PUSH2
     EQUAL
     IF:<{
-      s0 s3 XCHG
+      s0 s4 XCHG
       INC
     }>ELSE<{
-      s4 s0 PUSH2
+      s5 s1 PUSH2
       8 PUSHPOW2
       DICTUGET
       NULLSWAPIFNOT
@@ -91,20 +90,20 @@ PROGRAM{
       LDREF
       NIP
       ENDS
-      s0 s3 XCHG
+      s0 s4 XCHG
     }>
     ACCEPT
-    s0 s7 XCHG
+    s0 s8 XCHG
     -1 PUSHINT
     UNTIL:<{
-      s9 PUSH
+      s10 PUSH
       4 PUSHINT
       DICTUGETNEXT
       NULLSWAPIFNOT
       NULLSWAPIFNOT
       DUP
       IF:<{
-        s1 s4 PUSH2
+        s1 s5 PUSH2
         4 PUSHINT
         DICTUGET
         NULLSWAPIFNOT
@@ -122,30 +121,30 @@ PROGRAM{
         ENDS
         s0 s2 XCHG
         ENDS
-        s9 s(-1) s4 PUXC2
+        s10 s(-1) s4 PUXC2
         CHKSIGNU
         37 THROWIFNOT
         s1 s2 XCHG
         4 PUSHINT
-        s3 s9 s9 PUXC2
+        s3 s8 s8 PUXC2
         DICTUSETREF
       }>ELSE<{
-        s1 s8 s8 XCHG3
+        s1 s7 s7 XCHG3
         DROP
       }>
-      s0 s7 XCHG
+      s0 s6 XCHG
       NOT
     }>
     DROP
-    s8 POP
-    s0 s7 XCHG
+    s9 POP
+    s0 s8 XCHG
     8 LDU
     LDREF
     ENDS
     0 PUSHINT
     -1 PUSHINT
     UNTIL:<{
-      s7 PUSH
+      s6 PUSH
       4 PUSHINT
       DICTUGETNEXT
       NULLSWAPIFNOT
@@ -155,45 +154,51 @@ PROGRAM{
       IF:<{
         s0 s2 XCHG
         INC
-        s0 s5 PUSH2
+        s0 s6 PUSH2
         GEQ
         IF:<{
           NIP
           s2 s3 PUSH2
           SENDRAWMSG
           8 PUSHPOW2
-          s7 s6 s6 PUXC2
+          s8 s12 s12 PUXC2
           DICTUDEL
           DROP
           0 PUSHINT
         }>ELSE<{
-          s6 s6 XCHG2
+          s12 s12 XCHG2
         }>
       }>ELSE<{
-        s0 s6 s6 XCHG3
+        s0 s12 s12 XCHG3
       }>
       NOT
-      s6 s6 s0 XCHG3
+      s12 s12 s0 XCHG3
     }>
-    s1 s3 XCHG
-    3 BLKDROP
-    OVER
+    DROP
+    s4 PUSH
     LESS
     IF:<{
       NEWC
       s1 s5 XCHG
-      32 STU
-      s1 s3 XCHG
       STDICT
+      s1 s7 XCHG
+      32 STU
+      s1 s5 XCHG
+      32 STU
+      s1 s5 XCHG
+      8 STU
+      STREF
       ENDC
-      s0 s2 XCHG
+      s0 s1 s5 XCHG3
       8 PUSHPOW2
       DICTUSETREF
     }>ELSE<{
-      s3 s4 XCHG2
-      3 BLKDROP
+      s2 s9 XCHG
+      s3 s7 XCHG
+      s2 s6 XCHG
+      6 BLKDROP
     }>
-    collect_garbage CALLDICT
+    ~collect_garbage CALLDICT
     s0 s2 XCHG
     INC
     NEWC

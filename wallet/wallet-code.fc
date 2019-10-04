@@ -2,19 +2,26 @@
 
 ;; Cleanup expired partial orders
 ;; messages
-(cell) collect_garbage(cell messages) {
+(cell, ()) ~collect_garbage(cell messages) {
   var hash = -1;
   do {
     (hash, var cs, var ok) = messages.udict_get_next?(256, hash);
     if (ok) {
+
+      ;; modeMessage$_ mode:uint8 body:^(Message X) = ModeMessage X;
+      ;; wrappedMessage$_ expires_at:uint32 seqno:uint32 body:(ModeMessage X) = WrappedMessage X;
+      ;; multiSigWrapperStorage$_ signatures:(HashmapE 4 ^Signature) message:(WrappedMessage X) = MultiSigWrapperStorage X;
+      ;;
+      ;; Skip signatures, check expiry
+      ;;
       ;; expiry <= now
-      if (cs~load_uint(32) <= now()) {
+      if (cs.skip_dict().preload_uint(32) <= now()) {
         messages~udict_delete?(256, hash);
       }
     }
   } until (~ ok);
 
-  return messages;
+  return (messages, ());
 }
 
 () store_db(int seqno, cell keys, cell messages) {
@@ -62,16 +69,10 @@
     ;; Throw if old message and doesn't exist in db
     throw_unless(35, ok);
 
-    ;; storedMessage$_ expires_at:uint32 signatures:(HashmapE 4 ^Signature) = StoredMessage X;
-    ;;
-    ;; Skip expiry
-    ;; 
-    ;; No seqno: we can't regenerate the hash of a stored message.
-    ;; That's a tradeoff to save grams on storage (and storing the seqno would be pointless anyway, 
-    ;; since all integrity checks were already made when the message was first stored).
+    ;; multiSigWrapperStorage$_ signatures:(HashmapE 4 ^Signature) message:(WrappedMessage X) = MultiSigWrapperStorage X;
     ;;
     ;; Load signatures
-    var storedMessageSignatures = storedMessage~load_ref().begin_parse().skip_bits(32).preload_dict();
+    var storedMessageSignatures = storedMessage~load_ref().begin_parse().preload_dict();
     storedMessage.end_parse();
   }
 
@@ -117,16 +118,14 @@
     }
   } until (~ ok);
   
-  ;; storedMessage$_ expires_at:uint32 signatures:(HashmapE 4 ^Signature) = StoredMessage X;
-  ;;
-  ;; But do we __have to__ store the body?
-  ;; I mean, each incoming order already has the full message body, why store it if you can reuse it?
-  ;; Anyway, for now I'm storing the body. (Scratch that, it's a waste of storage, just store the hash)
+  ;; modeMessage$_ mode:uint8 body:^(Message X) = ModeMessage X;
+  ;; wrappedMessage$_ expires_at:uint32 seqno:uint32 body:(ModeMessage X) = WrappedMessage X;
+  ;; multiSigWrapperStorage$_ signatures:(HashmapE 4 ^Signature) message:(WrappedMessage X) = MultiSigWrapperStorage X;
   ;;
   if (count < min_sigs) {
-    messages~udict_set_ref(256, hash, begin_cell().store_uint(expires_at, 32).store_dict(storedMessageSignatures).end_cell());
+    messages~udict_set_ref(256, hash, begin_cell().store_dict(storedMessageSignatures).store_uint(expires_at, 32).store_uint(msg_seqno, 32).store_uint(mode, 8).store_ref(message).end_cell());
   }
-  messages = collect_garbage(messages);
+  messages~collect_garbage();
 
   ;; storage$_ seqno:uint32 minSigs:(## 4) keys:(HashmapE 4 ^PubKey) messages:(HashmapE 256 ^(Message X)) = Storage X;
   set_data(begin_cell().store_uint(stored_seqno + 1, 32).store_uint(min_sigs, 4).store_dict(keys).store_dict(messages).end_cell());
