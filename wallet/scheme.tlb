@@ -1,31 +1,35 @@
 // This is just an approximated TL scheme, explaining the message formats used by the multisig wallet.
 // Multisig wallet constructors
 
+// 256 bits
+pubKey$_ k:bits256 = PubKey;
+
 // 512 bits
 signature$_ R:bits256 s:bits256 = Signature;
 
+// Message + send ModeMessage
+modeMessage$_ mode:uint8 body:(Message X) = ModeMessage X;
+
+
 // Actual multisigned message
-wrappedMessage$_ expires_at:uint32 seqno:uint32 body:(Either (Message X) ^(Message X)) = WrappedMessage X;
+wrappedMessage$_ expires_at:uint32 seqno:uint32 body:(ModeMessage X) = WrappedMessage X;
 
 // key ID => signature
-multiSigWrapper$0 keys_signatures:(HashmapE 4 ^Signature) message:(WrappedMessage X) = MultiSigWrapper X;
+multiSigWrapper$0 signatures:(HashmapE 4 ^Signature) message:^(WrappedMessage X) = MultiSigWrapper X;
 
 // multisignature_future$1 = MultiSignatureWrapper;
 
 
 // Constructors for wallet storage
-simple_multisigned_message$_ signatures:[ 4 Signature) expires_at:uint32 body:(Either (Message X) ^(Message X)) = SimpleMultiSigMessage X;
+storedMessage$_ expires_at:uint32 signatures:(HashmapE 4 ^Signature) body:(ModeMessage X) = StoredMessage X;
+
 
 // Not doing explicit versioning here, since the structure of the storage can only change after an update of the onchain wallet code
 // Max 256 buffered messages, to avoid excessive memory usage, could be tweaked.
 // Max 10 keys (not sure about this, the contest instruction file says 10 in one place and 100 in another, so I chose 10)
 // Min 3 signatures per message
-storage$_ seqno:uint32 {k:(## 4)} n:(## 4) { k > 0 } { k >= 3 } { n >= k } { n <= 10 }
-   keys:(HashMap 256 (## 4)) 
-   messages:(HashMapE 8 ^(SimpleMultiSigMessage X)) = Storage;
-
-
-
+storage$_ seqno:uint32 minSigs:(## 4) keys:(HashmapE 4 ^PubKey) messages:(HashmapE 8 ^(StoredMessage X)) 
+          {k:(## 4)} { k > 0 } { k >= 3 } { n >= k } { n <= 10 } = Storage X;
 
 // TON stuff
 

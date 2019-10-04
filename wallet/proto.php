@@ -3,6 +3,7 @@
 if (!\file_exists('db.json')) {
     $db = [
         'seqno' => 1,
+        'minSig' => 3,
         'keys' => [
             'key1'
         ],
@@ -71,7 +72,6 @@ if ($op === 0) {
         return 'not enough signatures';
     }
 
-    $body = $body['body'];
     if ($body['expires'] < \time()) {
         //if ($shouldUpdate) {
         //    storeDb($db);
@@ -82,44 +82,38 @@ if ($op === 0) {
 
     if ($db['seqno'] === $body['seqno']) {
         $db['seqno']++;
-        //$shouldUpdate = true;
+        $oldSignatures = [];
+    // Assuming there are no signatures stored
     } elseif (!isset($db['messages'][$hash])) {
-        //if ($shouldUpdate) {
-        //    storeDb($db);
-        //}
         return 'wrong seqno or no such message';
     } else {
-        
+        $oldSignatures = $db['messages'][$hash]['signatures'];
     }
 
-    $oldSignatures = $db['messages'][$hash]['signatures'] ?? [];
-    $oldCount = \count($oldSignatures);
-
     foreach ($signatures as $idx => $signature) {
-        if (isset($oldSignatures[$idx])) {
-            continue;
-        }
-
         $key = $db['keys'][$idx];
         if (!checkSig($signature, $key)) {
-            continue;
+            return 'wrong sig';
         }
 
         $oldSignatures[$idx] = $signature;
     }
 
-    $newCount = \count($oldSignatures);
-    if ($newCount !== $oldCount) {
-        $db['messages'][$hash]['signatures'] = $oldSignatures;
-        $shouldUpdate = true;
-    } else if (!$newCount) {
-        return 'no valid signatures found!';
+    $count = 0;
+    foreach ($oldSignatures as $sig) {
+        if (++$count >= 3) {
+            sendMessage($body);
+            break;
+        }
     }
 
-    if ($shouldUpdate) {
-        storeDb($db);
+    if ($count < 3) {
+        $db['messages'][$hash] = [
+            'expires' => $body['expires'],
+            'signatures' => $oldSignatures,
+            'body' => $body
+        ];
     }
-    if ($newCount >= 3) {
-        sendMessage($db['messages'][$hash]['body']['body']);
-    }
+    
+    storeDb(garbageCollect($db));
 }

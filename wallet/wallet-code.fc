@@ -1,26 +1,20 @@
 ;; Multisig wallet smart contract
 
-;; Cleanup expired partial orders (& get contract data)
-;; needsWrite, seqno, keys, messages
-(int, int, cell, cell) collect_garbage() {
-  var data = get_data().begin_parse();
-  var (seqno, keys, messages) = (data~load_int(32), data~load_dict(), data~load_dict());
-  data.end_parse();
-
-  var needsWrite = 0;
+;; Cleanup expired partial orders
+;; messages
+(cell) collect_garbage(cell messages) {
   var hash = -1;
   do {
-    (hash, var cs, var ok) = messages.idict_get_next?(256, hash);
+    (hash, var cs, var ok) = messages.udict_get_next?(256, hash);
     if (ok) {
       ;; expiry <= now
       if (cs~load_uint(32) <= now()) {
-        messages.idict_delete?(256, hash);
-        needsWrite = -1;
+        messages.udict_delete?(256, hash);
       }
     }
   } until (~ ok);
 
-  return (needsWrite, seqno, keys, messages);
+  return messages;
 }
 
 () store_db(int seqno, cell keys, cell messages) {
@@ -34,61 +28,96 @@
 ;; multiSigWrapper$0 keys_signatures:(HashmapE 4 ^Signature) message:(WrappedMessage X) = MultiSigWrapper X;
 () recv_external(slice in_msg) impure {
   ;; Check if multiSigWrapper$0 or future unsupported protocol
-  throw_if(32, in_msg~load_uint(1) != 0);
+  throw_unless(32, in_msg~load_uint(1));
 
   ;; Check if is hme_empty$0 or hme_root$1
-  ;; If empty signature list
-  throw_if(33, in_msg.preload_uint(1) != 1);
+  ;; Throw if empty signature list
+  throw_unless(33, in_msg.preload_uint(1));
 
   var signatures = in_msg~load_dict();
-  var cs = in_msg;
+  var message_data = in_msg;
 
-  ;; wrappedMessage$_ expires_at:uint32 seqno:uint32 body:(Either (Message X) ^(Message X)) = WrappedMessage X;
-  var (expires_at, msg_seqno) = (cs~load_uint(32), cs~load_uint(32));
+  ;; wrappedMessage$_ expires_at:uint32 seqno:uint32 body:^(Message X) = WrappedMessage X;
+  var (expires_at, msg_seqno) = (message_data~load_uint(32), message_data~load_uint(32));
   ;; Message expired
   throw_if(34, expires_at <= now());
 
+  ;; We will need the hash anyway
   var hash = slice_hash(in_msg);
-  var (needsWrite, stored_seqno, keys, messages) = collect_garbage();
-  var storedSignatures = new_dict();
+  
+  ;; storage$_ seqno:uint32 minSigs:(## 4) keys:(HashmapE 4 (## 256)) messages:(HashmapE 8 ^(Message X)) = Storage X;
+  var stored_data = get_data().begin_parse();
+  var (stored_seqno, min_sigs, keys, messages) = (stored_data~load_uint(32), stored_data~load_uint(4), stored_data~load_dict(), stored_data~load_dict());
+  stored_data.end_parse();
 
+  ;; This is a new message, so there will be no stored messages
+  var storedMessageSignatures = new_dict();
   ;; If new message, increase seqno
   if (stored_seqno == msg_seqno) {
     stored_seqno += 1;
-    needsWrite = -1;
-
+    
   ;; If old message
   } else {
-    (var storedMessage, var ok) = messages.idict_get?(256, hash);
-    ;; If old message and doesn't exist in db
-    ifnot (ok) {
-      ;; Store new garbage-collected db
-      if (needsWrite) {
-        store_db(stored_seqno, keys, messages);
-      }
-      ;; Throw
-      throw_if(35, -1);
-    }
+    (var storedMessage, var ok) = messages.udict_get?(256, hash);
+    ;; Throw if old message and doesn't exist in db
+    throw_unless(35, ok);
+
     ;; Skip expiry
     storedMessage.skip_bits(32);
     ;; No seqno: we can't regenerate the hash of a stored message.
     ;; That's a tradeoff to save grams on storage (and storing the seqno would be pointless anyway, 
-    ;; since all integrity checks were already made when the message was first stored)
+    ;; since all integrity checks were already made when the message was first stored).
     ;;
     ;; Load signatures
-    var storedSignatures = storedMessage.load_dict();
+    var storedMessageSignatures = storedMessage.load_dict();
   }
 
   accept_message();
-  cs~touch();
+  message_data~touch();
+
+  var idx = -1;
+  do {
+    (idx, var signature, var ok) = signatures.udict_get_next?(4, idx);
+    if (ok) {
+      (var public_key, var kok) = keys.udict_get?(4, idx);
+      throw_unless(36, kok);
+      throw_unless(37, check_signature(hash, signature, public_key~load_uint(256)));
+
+      storedMessageSignatures.udict_set_ref(4, idx, signature);
+    }
+  } until (~ ok);
   
-  while (cs.slice_refs()) {
-    var mode = cs~load_uint(8);
-    send_raw_message(cs~load_ref(), mode);
+  var message = message_data~load_ref();
+  message_data.end_parse();
+
+  var count = 0;
+  var sent = 0;
+  var idx = -1;
+  do {
+    (idx, var signature, var ok) = storedMessageSignatures.udict_get_next?(4, idx);
+    if (ok) {
+      count += 1;
+      if (count >= min_sigs) {
+        send_raw_message(message, mode);
+        messages.udict_delete?(256, hash);
+        ok = 0;
+      }
+    }
+  } until (~ ok);
+  
+  ;; storedMessage$_ expires_at:uint32 signatures:(HashmapE 4 ^Signature) body:^(Message X) = StoredMessage X;
+  ;;
+  ;; But do we __have to__ store the body?
+  ;; I mean, each incoming order already has the full message body, why store it if you can reuse it?
+  ;; Anyway, for now I'm just storing this.
+  ;;
+  if (count < min_sigs) {
+    messages.udict_set(256, hash, begin_cell().store_uint(expires_at, 32).store_dict(storedMessageSignatures).store_ref(message).end_cell());
   }
-  
-  cs.end_parse();
-  ;;set_data(begin_cell().store_uint(stored_seqno + 1, 32).store_uint(public_key, 256).end_cell());
+  messages = collect_garbage(messages);
+
+  ;; storage$_ seqno:uint32 minSigs:(## 4) keys:(HashmapE 4 ^PubKey) messages:(HashmapE 8 ^(Message X)) = Storage X;
+  set_data(begin_cell().store_uint(stored_seqno + 1, 32).store_uint(min_sigs, 4).store_dict(keys).store_dict(messages).end_cell());
 }
 
 ;; Get methods
