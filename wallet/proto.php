@@ -2,7 +2,7 @@
 
 if (!\file_exists('db.json')) {
     $db = [
-        'seqno' => 1,
+        'seqno' => 0,
         'minSig' => 3,
         'keys' => [
             'key1'
@@ -13,6 +13,7 @@ if (!\file_exists('db.json')) {
                 'signatures' => [
                     0 => 'sig' // Generated from key1
                 ],
+                'seqno' => 0,
                 'body' => 'body'
             ]
         ]
@@ -114,6 +115,6 @@ if ($op === 0) {
             'body' => $body
         ];
     }
-    
+
     storeDb(garbageCollect($db));
 }

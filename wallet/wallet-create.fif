@@ -1,28 +1,58 @@
-"Asm.fif" include
 "TonUtil.fif" include
 
-2 : k
 
-{ ."usage: " @' $0 type ." <workchain-id> <>" cr
-  cr
-  ."Creates a new advanced wallet in specified workchain, with private key saved to or loaded from <filename-base>.pk" cr
-  ."('new-wallet.pk' by default)" cr 1 halt
+{ dup ."Loading public key from file " type cr 
+  file>B dup Blen 32 <> abort"Public key must be exactly 32 bytes long"
+} : load-pubkey
+
+{ ."usage: " @' $0 type ." <workchain-id> <wallet-name> <n> <k> [<key1> <key2> ...] [<boc1> <boc2>]" cr cr
+  ."Creates a new multisignature wallet in specified workchain composed of <n> (1-10) public keys." cr
+  ."Min <k> (1-10) signatures required to send an order; load <n> pre-existing public keys from files <key1...n>." cr
+  ."Optionally load a number of pre-generated partially signed orders <boc1...m> to preload into the contract." cr cr
+  ."Create or generate public key files from private keys using gen-pub.fif key" cr cr
+  1 halt
 } : usage
-$# 1- -2 and ' usage if
+$# 5 < ' usage if
 
 $1 parse-workchain-id =: wc    // set workchain id from command line argument
-def? $2 { @' $2 } { "new-wallet" } cond constant file-base
+$2 constant file-base
+$3 (number) 1 <> abort"<n> must be a number!" constant n
+$4 (number) 1 <> abort"<k> must be a number!" constant k
+$# 4 n + - constant m
 
-."Creating new advanced wallet in workchain " wc . cr
+n 1 < n 10 > or abort"<n> must be between 1 and 10"
+k 1 < k 10 > or abort"<k> must be between 1 and 10"
+k n <= not abort"<k> must smaller than or equal to <n>"
 
-"wallet-code.fif" include
+$# 4 n + < abort"Not enough keys were provided in args!"
+
+5 { dup $() swap 1+ } n times drop
+n tuple constant keys-files
+
+5 n + { dup $() swap 1+ } m times drop
+m tuple constant messages
+
+."Creating new advanced wallet in workchain " wc .
+."with n=" n .
+."k=" k .
+."m=" m . cr
+
+keys-files explode { } swap times
+
 // code
+"wallet-code.fif" include
+// data
+// storage$_ seqno:uint32 minSigs:(## 4) keys:(HashmapE 4 ^PubKey) messages:(HashmapE 256 ^(MultiSigWrapperStorage X)) 
+//          {k:(## 4)} { k > 0 } { k >= 3 } { n >= k } { n <= 10 } = Storage X;
+
 <b 0 32 u, 
+   k 4 u,
    file-base +".pk" load-generate-keypair
    constant wallet_pk
    B, 
-b> // data
-null // no libraries
+b>
+// no libraries
+null
 <b b{0011} s, 3 roll ref, rot ref, swap dict, b>  // create StateInit
 dup ."StateInit: " <s csr. cr
 dup hash wc swap 2dup 2constant wallet_addr

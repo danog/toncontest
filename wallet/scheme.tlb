@@ -17,7 +17,7 @@ wrappedMessage$_ expires_at:uint32 seqno:uint32 body:(ModeMessage X) = WrappedMe
 multiSigWrapper$0 signatures:(HashmapE 4 ^Signature) message:(WrappedMessage X) = MultiSigWrapper X;
 //multiSigFuture$1 = MultiSigWrapper X;
 
-// For internal storage
+// For internal storage, no constructor ID
 multiSigWrapperStorage$_ signatures:(HashmapE 4 ^Signature) message:(WrappedMessage X) = MultiSigWrapperStorage X;
 
 
