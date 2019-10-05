@@ -5,4 +5,4 @@
     exit 1
 }
 
-$TONLIB_HOME/build/crypto/func -WRS -o "$(basename $1 .fc 2>/dev/null).fif" "$TONLIB_HOME/crypto/smartcont/stdlib.fc" "$@"
+$TONLIB_HOME/build/crypto/func -AP -o "$(basename $1 .fc 2>/dev/null).fif" "$TONLIB_HOME/crypto/smartcont/stdlib.fc" "$@"
