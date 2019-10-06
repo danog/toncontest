@@ -1,0 +1,8 @@
+{ abort"This is an error thrown inside a times loop" } : throw
+
+{
+  ."Printing stuff at line 4" cr
+  ."Printing stuff at line 5" cr
+  throw            // line 6
+  ."Printing stuff at line 7" cr
+} 3 times          // line 8

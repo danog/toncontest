@@ -10,11 +10,12 @@
   file>B B>boc
 } : load-boc
 
-{ ."usage: " @' $0 type ." <workchain-id> <wallet-name> <n> <k> [<key1> <key2> ...] [<boc1> <boc2>]" cr cr
-  ."Creates a new multisignature wallet in specified workchain composed of <n> (1-10) public keys." cr
+{ ."usage: " @' $0 type ." <workchain-id> <wallet-name> <n> <k> <privkey1> [<pubkey2> ...] [<boc1> <boc2>]" cr cr
+  ."Creates a new multisignature wallet in specified workchain composed of <n> (1-10) keys." cr
+  ."The first of the keys must be a private key (pre-existing or not), used to generate the wallet; the rest MUST be public keys." cr
+  ."Create or generate public key files from private keys using gen-pub.fif privkey" cr cr
   ."Min <k> (1-10) signatures required to send an order; load <n> pre-existing public keys from files <key1...n>." cr
   ."Optionally load a number of pre-generated partially signed orders <boc1...m> to preload into the contract." cr cr
-  ."Create or generate public key files from private keys using gen-pub.fif key" cr cr
   1 halt
 } : usage
 $# 5 < ' usage if
@@ -31,7 +32,9 @@ k n <= not abort"<k> must smaller than or equal to <n>"
 
 $# 4 n + < abort"Not enough keys were provided in args!"
 
-5 { dup $() +".pubkey" load-pubkey swap 1+ } n times drop
+$5 +".pk" load-generate-keypair { 256 B>u@ swap } 2 times const privkey
+
+6 { dup $() +".pubkey" load-pubkey swap 1+ } n 1- times drop
 n tuple constant keys
 
 5 n + { dup $() +".boc" load-boc swap 1+ } m times drop
@@ -108,7 +111,7 @@ dictnew
   messages swap [] // Get n-th value v
   dup <b swap ref, // ~
 
-  swap hash        // Get x
+  swap hashu       // Get x
 
   3 roll           // Get dictionary s
   256              // Get n
@@ -123,19 +126,22 @@ dictnew
 // data
 // storage$_ seqno:uint32 minSigs:(## 4) n:(## 4) keys:[ ^PubKeys ] messages:(HashmapE 256 ^(MultiSigWrapperStorage X)) 
 //           { minSigs > 0 } { n >= minSigs } { n <= 10 } { minSigs <= 10 } = Storage X;
-
 <b 0 32 u, 
    k 4 u, 
    nCells 4 u,
    keyCells explode roll { swap ref, } nCells times
-
-   messages-dict <s s, 
+   messages-dict dict, 
 b>
-
 // no libraries
 null
 // create StateInit
-<b b{0011} s, 3 roll ref, rot ref, swap dict, b>  
+// _ split_depth:(Maybe (## 5)) special:(Maybe TickTock)
+//   code:(Maybe ^Cell) data:(Maybe ^Cell)
+//   library:(HashmapE 256 SimpleLib) = StateInit;
+// split_depth 0 special 0 code 1 data 1
+//
+<b b{0011} s, 3 roll ref, rot ref, swap dict, b> 
+
 dup ."StateInit: " <s csr. cr
 dup hash wc swap 2dup 2constant wallet_addr
 ."new wallet address = " 2dup .addr cr
@@ -144,7 +150,7 @@ dup hash wc swap 2dup 2constant wallet_addr
 ."Bounceable address (for later access): " 6 .Addr cr
 <b 0 32 u, -1 32 i, b>
 dup ."signing message: " <s csr. cr
-dup hash wallet_pk ed25519_sign_uint rot
+dup hash privkey ed25519_sign_uint rot
 <b b{1000100} s, wallet_addr addr, b{000010} s, swap <s s, b{0} s, swap B, swap <s s, b>
 dup ."External message for initialization is " <s csr. cr
 2 boc+>B dup Bx. cr

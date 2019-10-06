@@ -216,4 +216,3 @@ PROGRAM{
     32 PLDU
   }>
 }END>c
-2 boc+>B "RS" B>file
