@@ -1,4 +1,5 @@
 ton-db-dir
 *.pk
+*.pubkey
 *.addr
 *.boc
