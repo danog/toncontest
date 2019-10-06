@@ -1,6 +1,6 @@
 "TonUtil.fif" include
 
-{ constant } : const
+' constant : const
 
 { dup ."Loading public key from file " type ."..." cr 
   file>B dup Blen 32 <> abort"Public key must be exactly 32 bytes long"
@@ -84,42 +84,33 @@ nRev { dup 1- swap  // Create a reverse counter
   swap
   // if ($x != $nRev && $x > 1 && $nCeil > 3)
   dup nRev <> swap 1 > shouldRef and and { nCeil pick ref, } if
-  
+
   b>          // Close builder, create cell
   nCeil -roll // Put cell at the back of the stack
 
 } nCeil times drop
 
-'drop nCeil 3 - times
+// Number of cells to store / Number of already referenced cells to delete
+nCeil 3 > { 3 nCeil 3 - } { nCeil 0 } cond const nRem const nCells
 
-/*
-dictnew
-0 { dup 1+ swap   // Create a counter
-  0 { dup 1+ swap // Create another counter
-    2 pick +      // Sum counters
-    dup keys swap [] // Get n-th value v
-  }
-  <b swap 256 B>u@ 256 u, // ~
+// Drop all cells we already referenced
+' drop nRem times
 
-  swap             // Get x
-  3 roll           // Get dictionary s
-  4                // Get n
+// Reverse order of cells
+nCells 0 reverse
 
-  b>idict!
-  not abort"Failure storing dictionary value!"
-
-  swap
-} nCells times drop const keys-dict
-*/
+// Create tuple with cells
+nCells tuple const keyCells
 
 // messages:(HashmapE 256 ^(MultiSigWrapperStorage X))
 dictnew
 0 { dup 1+ swap  // Create a counter
-  messages swap []     // Get n-th value v
+  messages swap [] // Get n-th value v
   dup <b swap ref, // ~
 
   swap hash        // Get x
-  4 roll           // Get dictionary s
+
+  3 roll           // Get dictionary s
   256              // Get n
   b>idict!
   not abort"Failure storing dictionary value!"
@@ -130,18 +121,21 @@ dictnew
 // code
 "wallet-code.fif" include
 // data
-// storage$_ seqno:uint32 minSigs:(## 4) keys:(HashmapE 4 ^PubKey) messages:(HashmapE 256 ^(MultiSigWrapperStorage X)) 
-//          {k:(## 4)} { k > 0 } { k >= 3 } { n >= k } { n <= 10 } = Storage X;
+// storage$_ seqno:uint32 minSigs:(## 4) n:(## 4) keys:[ ^PubKeys ] messages:(HashmapE 256 ^(MultiSigWrapperStorage X)) 
+//           { minSigs > 0 } { n >= minSigs } { n <= 10 } { minSigs <= 10 } = Storage X;
 
 <b 0 32 u, 
-   k 4 u,
-   file-base +".pk" load-generate-keypair
-   constant wallet_pk
-   B, 
+   k 4 u, 
+   nCells 4 u,
+   keyCells explode roll { swap ref, } nCells times
+
+   messages-dict <s s, 
 b>
+
 // no libraries
 null
-<b b{0011} s, 3 roll ref, rot ref, swap dict, b>  // create StateInit
+// create StateInit
+<b b{0011} s, 3 roll ref, rot ref, swap dict, b>  
 dup ."StateInit: " <s csr. cr
 dup hash wc swap 2dup 2constant wallet_addr
 ."new wallet address = " 2dup .addr cr
