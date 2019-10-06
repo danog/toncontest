@@ -118,3 +118,46 @@ if ($op === 0) {
 
     storeDb(garbageCollect($db));
 }
+
+
+$keys = [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+];
+
+$n = count($keys);
+$nCells = $n / 3;
+
+$cells = [];
+$cell = [];
+for ($x = 0; $x < n; $x++) {
+    for ($y = 0; $y < 3; $y++) {
+        $z = $x + $y;
+    }
+}
+
+foreach ($keys as $k => $key) {
+    if ($k && !($k % 3)) {
+        $cells []= $cell;
+        $cell = [];
+    }
+    $cell []= $key;
+}
+if ($cell) {
+    $cells []= $cell;
+}
+
+$final = [];
+for ($x = $nRev = count($cells) - 1; $x >= 0; $x--) {
+    if ($nRev > 2 && $x != $nRev && $x > 1) {
+
+    }
+}
