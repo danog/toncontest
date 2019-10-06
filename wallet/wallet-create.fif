@@ -32,7 +32,7 @@ k n <= not abort"<k> must smaller than or equal to <n>"
 
 $# 4 n + < abort"Not enough keys were provided in args!"
 
-$5 +".pk" load-generate-keypair { 256 B>u@ swap } 2 times const privkey
+$5 +".pk" load-generate-keypair const privkey 256 B>u@
 
 6 { dup $() +".pubkey" load-pubkey swap 1+ } n 1- times drop
 n tuple constant keys
@@ -148,6 +148,7 @@ dup hash wc swap 2dup 2constant wallet_addr
 2dup file-base +".addr" save-address-verbose
 ."Non-bounceable address (for init): " 2dup 7 .Addr cr
 ."Bounceable address (for later access): " 6 .Addr cr
+.s
 <b 0 32 u, -1 32 i, b>
 dup ."signing message: " <s csr. cr
 dup hash privkey ed25519_sign_uint rot
