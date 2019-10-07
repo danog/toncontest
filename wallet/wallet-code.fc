@@ -1,5 +1,16 @@
 ;; Multisig wallet smart contract
 
+
+;; Tuple manipulation primitives for integers
+tuple tuple_set(tuple t, int index, int value) asm(t value index) "SETINDEXVARQ";
+(tuple, ()) ~tuple_set(tuple t, int index, int value) asm(t value index) "SETINDEXVARQ";
+
+;; Tuple manipulation primitives for cells
+tuple tuple_setcell(tuple t, int index, cell value) asm(t value index) "SETINDEXVARQ";
+(tuple, ()) ~tuple_setcell(tuple t, int index, cell value) asm(t value index) "SETINDEXVARQ";
+
+int tuple_len(tuple t) asm "TLEN";
+
 ;; Cleanup expired partial orders
 ;; messages
 (cell, ()) ~collect_garbage(cell messages) {
@@ -24,6 +35,50 @@
   return (messages, ());
 }
 
+;; messages
+(slice, (tuple, tuple)) ~load_keys(slice messages) {
+  int length = messages~load_uint(4);
+  int index = 0;
+  var keys = nil;
+  var keys_cells = nil;
+  var keys_cell = messages~load_ref();
+  keys_cells~tuple_setcell(index / 3, keys_cell);
+  var keys_slice = keys_cell.begin_parse();
+  do {
+    if ((index % 3 == 0)) {
+      if ((index < 9) & (index > 0)) {
+        keys_slice.end_parse();
+        var keys_cell = messages~load_ref();
+        keys_cells~tuple_setcell(index / 3, keys_cell);
+        var keys_slice = keys_cell.begin_parse();
+      } else {
+        var newkeys_slice = keys_slice.preload_ref().begin_parse();
+        keys_slice.end_parse();
+        keys_slice = newkeys_slice;
+      }
+    }
+    int key = keys_slice.preload_uint(256);
+
+    keys~tuple_set(index, key);
+    index += 1;
+  } until (index == length);
+  keys_slice.end_parse();
+
+  return (messages, (keys, keys_cells));
+}
+
+builder store_keys(builder b, int length, var keys) {
+  b~store_uint(4, length);
+
+  length = keys.tuple_len();
+  int index = 0;
+  do {
+    b.store_ref(keys.cell_at(index));
+    index += 1;
+  } until (index == length);
+  return b;
+}
+
 () store_db(int seqno, cell keys, cell messages) {
   set_data(begin_cell().store_uint(seqno, 32).store_dict(keys).store_dict(messages).end_cell());
 }
@@ -42,19 +97,19 @@
   throw_unless(33, in_msg.preload_uint(1));
 
   var signatures = in_msg~load_dict();
-  var message_data = in_msg;
+  slice message_data = in_msg;
 
   ;; wrappedMessage$_ expires_at:uint32 seqno:uint32 body:^(Message X) = WrappedMessage X;
-  var (expires_at, msg_seqno) = (message_data~load_uint(32), message_data~load_uint(32));
+  (int expires_at, int msg_seqno) = (message_data~load_uint(32), message_data~load_uint(32));
   ;; Message expired
   throw_if(34, expires_at <= now());
 
   ;; We will need the hash anyway
-  var hash = slice_hash(in_msg);
+  int hash = slice_hash(in_msg);
   
   ;; storage$_ seqno:uint32 minSigs:(## 4) keys:(HashmapE 4 ^PubKey) messages:(HashmapE 256 ^(StoredMessage X)) = Storage X;
-  var stored_data = get_data().begin_parse();
-  var (stored_seqno, min_sigs, keys, messages) = (stored_data~load_uint(32), stored_data~load_uint(4), stored_data~load_dict(), stored_data~load_dict());
+  slice stored_data = get_data().begin_parse();
+  (int stored_seqno, int min_sigs, (var keys, var kcells), var messages) = (stored_data~load_uint(32), stored_data~load_uint(4), stored_data~load_keys(), stored_data~load_dict());
   stored_data.end_parse();
 
   ;; This is a new message, so there will be no stored messages
@@ -83,18 +138,16 @@
   do {
     (idx, var signature, var ok) = signatures.udict_get_next?(4, idx);
     if (ok) {
-      var (public_key, kok) = keys.udict_get?(4, idx);
-      throw_unless(36, kok);
+      var public_key = keys.int_at(idx);
+      ;;throw_unless(at(at(36, kok);
       
-      var key = public_key~load_ref().begin_parse().preload_uint(256);
       var signature_cell = signature~load_ref();
       var signature_slice = signature_cell.begin_parse();
       var slice_copy = signature_slice;
       
       signature_slice.end_parse();
-      public_key.end_parse();
 
-      throw_unless(37, check_signature(hash, slice_copy, key));
+      throw_unless(37, check_signature(hash, slice_copy, public_key));
 
       storedMessageSignatures~udict_set_ref(4, idx, signature_cell);
     }
@@ -128,7 +181,7 @@
   messages~collect_garbage();
 
   ;; storage$_ seqno:uint32 minSigs:(## 4) keys:(HashmapE 4 ^PubKey) messages:(HashmapE 256 ^(Message X)) = Storage X;
-  set_data(begin_cell().store_uint(stored_seqno + 1, 32).store_uint(min_sigs, 4).store_dict(keys).store_dict(messages).end_cell());
+  set_data(begin_cell().store_uint(stored_seqno + 1, 32).store_uint(min_sigs, 4).store_keys(keys.tuple_len(), kcells).store_dict(messages).end_cell());
 }
 
 ;; Get methods
