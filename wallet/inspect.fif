@@ -1,0 +1,119 @@
+"TonUtil.fif" include
+
+{ dup ."Inspecting order from file " type ."..." cr
+  file>B B>boc
+} : inspect-load-boc
+{
+  ."usage: " @' $0 type ." <input>" cr
+  ."Inspects contents of multisig <input>.boc file." cr 1 halt
+} : usage
+
+"inspect-this" (def?) not {
+  $# 1 < ' usage if
+  $1 =: inspect-this
+} if
+
+
+// Assuming the same external structure created by create.fif (simple external message)
+//
+// addr_none$00 = MsgAddressExt;
+// addr_extern$01 len:(## 9) external_address:(bits len) 
+//              = MsgAddressExt;
+// anycast_info$_ depth:(#<= 30) { depth >= 1 }
+//    rewrite_pfx:(bits depth) = Anycast;
+// addr_std$10 anycast:(Maybe Anycast) 
+//    workchain_id:int8 address:bits256  = MsgAddressInt;
+// addr_var$11 anycast:(Maybe Anycast) addr_len:(## 9) 
+//    workchain_id:int32 address:(bits addr_len) = MsgAddressInt;
+//
+// ext_in_msg_info$10 src:MsgAddressExt dest:MsgAddressInt 
+//  import_fee:Grams = CommonMsgInfo;
+//
+//
+// message$_ {X:Type} info:CommonMsgInfo
+//   init:(Maybe (Either StateInit ^StateInit))
+//   body:(Either X ^X) = Message X;
+//
+// <b b{1000100} s, wallet_addr addr, 0 Gram, b{00} s,
+//    swap <s s, b>
+// (external message)
+//
+inspect-this +".boc" inspect-load-boc
+<s dup csr. cr
+  // External message
+  7 u@+ swap 68 <> { ."There seems to be an invalid header" cr } if // 1000100 => 68
+
+  8 i@+
+  256 u@+ -rot
+  2dup 2constant wallet_addr
+  ."Wallet address: " .addr cr
+  
+  Gram@+ nip // Ignore grams
+
+  1 u@+ swap
+  abort"This seems to be an init message"
+
+  // multiSigWrapper$0 signatures:(HashmapE 4 Signature) message:(WrappedMessage X) = MultiSigWrapper X;
+  1 u@+ swap
+  dup ."Message version: " . cr
+  abort"Unsupported message version!"
+
+  dict@+ swap
+  dup null? abort"Empty signature list!"
+
+  ."Signed by the following keys: "
+  4 { drop . ."- " -1 } dictforeach cr drop
+
+  // modeMessage$_ mode:uint8 body:^(Message X) = ModeMessage X;
+  // wrappedMessage$_ expires_at:uint32 seqno:uint32 body:(ModeMessage X) = WrappedMessage X;
+
+  32 u@+ swap
+  dup ."Expires: " .
+  dup now < { ."(already EXPIRED!)" drop } { ."(in " now - . ."seconds)" } cond cr
+
+  32 u@+ swap
+  ."Seqno: " . cr
+
+  8 u@+ swap
+  ."Mode: " . cr
+
+  // Now on to the actual message we're agreeing to sign
+  //
+  //  int_msg_info$0 ihr_disabled:Bool bounce:Bool bounced:Bool
+  //    src:MsgAddressInt dest:MsgAddressInt 
+  //    value:CurrencyCollection ihr_fee:Grams fwd_fee:Grams
+  //    created_lt:uint64 created_at:uint32 = CommonMsgInfo;
+  //  ext_in_msg_info$10 src:MsgAddressExt dest:MsgAddressInt 
+  //     import_fee:Grams = CommonMsgInfo;
+  //  ext_out_msg_info$11 src:MsgAddressInt dest:MsgAddressExt
+  //    created_lt:uint64 created_at:uint32 = CommonMsgInfo;
+  cr ref@ <s
+
+  1 u@+ swap
+  { // External message
+    ."Inside: external message" cr
+  }
+  { // Internal message
+    ."Inside: internal message" cr
+    1 u@+ swap
+    ."Instant hypercube routing disabled? " . cr
+
+    1 u@+ swap
+    ."Bounce flag set? " . cr
+
+    1 u@+ swap
+    ."Bounced flag set? " . cr
+
+    2 u@+ nip // Drop src address constructor + flags
+
+    3 u@+ swap
+    4 <> abort"Unsupported address!" // Make things simple for now
+
+    8 i@+
+    256 u@+ -rot
+    ."Destination address: " .addr cr
+
+    Gram@+ swap
+    ."Grams: " .GR cr
+  } cond
+  drop

@@ -1,0 +1,50 @@
+#!/usr/bin/env -S fift -s
+"TonUtil.fif" include
+
+{ dup ."Loading order from file " type ."..." cr
+  file>B B>boc
+} : load-boc
+{
+  ."usage: " @' $0 type ." <input> <output> <key> <key-id>" cr
+  ."Signs multisig <input>.boc file with private key <key-id> loaded from file <key>.pk and writes result to <output>.boc" cr 1 halt
+} : usage
+$# 4 < ' usage if
+
+$1 =: input-file
+$2 =: output-file
+$3 =: key
+$4 parse-int =: key-id
+
+input-file constant inspect-this
+"inspect.fif" include cr 
+
+input-file +".boc" load-boc constant order
+key +".pk" load-keypair nip constant wallet_pk
+
+
+order <s
+  // External message
+  7 u@+ nip
+  8 i@+ nip
+  256 u@+ nip
+  Gram@+ nip
+  2 u@+ nip
+
+  // multiSigWrapper$0 signatures:(HashmapE 4 Signature) message:(WrappedMessage X) = MultiSigWrapper X;
+  dict@+ swap constant signatures
+  s>c constant wrapped-message
+
+wrapped-message ."signing message: " <s csr. cr
+wrapped-message hash wallet_pk ed25519_sign_uint
+
+256 B>u@+ swap 256 B>u@ swap
+<b swap 256 u, swap 256 u, b> <s
+
+
+key-id signatures 4 udict! not abort"Failure adding signature!" constant signatures-final
+
+<b 68 7 u, wallet_addr addr, 0 Gram, 0 2 u, signatures-final dict, wrapped-message <s s, b>
+
+2 boc+>B dup Bx. cr
+output-file +".boc" tuck B>file
+."Saved new multisigned message to file " type cr
