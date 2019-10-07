@@ -226,10 +226,8 @@ PROGRAM{
       8 PUSHPOW2
       DICTUGET
       NULLSWAPIFNOT
-      35 THROWIFNOT
-      LDREF
       NIP
-      ENDS
+      35 THROWIFNOT
       s0 s5 XCHG
     }>
     ACCEPT
@@ -245,26 +243,24 @@ PROGRAM{
       IF:<{
         s5 s1 PUSH2
         INDEXVAR
-        s0 s3 XCHG
-        LDREF
-        DROP
-        DUP
-        CTOS
-        DUP
-        ENDS
-        s11 s0 s4 PUXC2
+        s10 s3 s(-2) PU2XC
         CHKSIGNU
         37 THROWIFNOT
-        s1 s2 XCHG
+        NEWC
+        s0 s3 XCHG2
+        STSLICER
+        ENDC
+        SWAP
         4 PUSHINT
-        s3 s9 s9 PUXC2
+        s1 s9 s9 PUXC2
         DICTUSETREF
       }>ELSE<{
-        s1 s8 s8 XCHG3
+        s8 s2 XCHG2
         DROP
       }>
-      s0 s7 XCHG
+      SWAP
       NOT
+      s1 s7 XCHG
     }>
     DROP
     s10 POP
@@ -360,13 +356,6 @@ PROGRAM{
     preload_keys CALLDICT
     SWAP
     INDEXVAR
-    DUP
-    ISNULL
-    IFJMP:<{
-      DROP
-      0 PUSHINT
-      DUP
-    }>
     -1 PUSHINT
     SWAP
   }>
@@ -380,20 +369,26 @@ PROGRAM{
     OVER
     TLEN
     UNTIL:<{
-      s2 PUSH
-      0 INDEX
-      s4 PUSH
+      SWAP
+      INC
+      s0 s1 PUSH2
       EQUAL
-      IFJMP:<{
-        s1 s3 XCHG
-        3 BLKDROP
-        -1 PUSHINT
-        SWAP
-      }>
-      2DUP
+      s3 s1 PUSH2
+      INDEXVAR
+      s5 PUSH
       EQUAL
+      OR
+      s1 s2 XCHG
     }>
-    4 BLKDROP
+    DROP
+    s2 POP
+    OVER
+    INDEXVAR
+    IFJMP:<{
+      -1 PUSHINT
+      SWAP
+    }>
+    DROP
     0 PUSHINT
     DUP
   }>

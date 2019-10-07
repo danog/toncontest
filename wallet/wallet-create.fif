@@ -152,5 +152,5 @@ dup hash privkey ed25519_sign_uint rot
 <b b{1000100} s, wallet_addr addr, b{000010} s, swap <s s, b{0} s, swap B, swap <s s, b>
 dup ."External message for initialization is " <s csr. cr
 2 boc+>B dup Bx. cr
-file-base +"-query.boc" tuck B>file
+file-base +"-create.boc" tuck B>file
 ."(Saved wallet creating query to file " type .")" cr

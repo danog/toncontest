@@ -20,9 +20,9 @@ cd build
 [ ! -f CMakeCache.txt ] && {
     cmake ..
 }
-cmake --build . --target lite-client
-cmake --build . --target fift
-cmake --build . --target func
+cmake --build . --target lite-client -- -j 4
+cmake --build . --target fift -- -j 4
+cmake --build . --target func -- -j 4
 
 rm -f ton-lite-client-test1.config.json
 wget https://test.ton.org/ton-lite-client-test1.config.json

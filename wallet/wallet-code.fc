@@ -145,11 +145,11 @@ builder store_keys(builder b, int length, var keys) {
 
   ;; This is a new message, so there will be no stored messages
   var storedMessageSignatures = new_dict();
-  ;; If new message, increase seqno
+  ;; If new message, check and increase seqno
   if (stored_seqno == msg_seqno) {
     stored_seqno += 1;
     
-  ;; If old message
+  ;; If old message, seqno WILL be different, check if exists in unsigned messages dict
   } else {
     var (storedMessage, ok) = messages.udict_get?(256, hash);
     ;; Throw if old message and doesn't exist in db
@@ -158,7 +158,7 @@ builder store_keys(builder b, int length, var keys) {
     ;; multiSigWrapperStorage$_ signatures:(HashmapE 4 ^Signature) message:(WrappedMessage X) = MultiSigWrapperStorage X;
     ;;
     ;; Load signatures
-    var storedMessageSignatures = storedMessage.begin_parse().preload_dict();
+    var storedMessageSignatures = storedMessage.preload_dict();
   }
 
   accept_message();
@@ -171,15 +171,11 @@ builder store_keys(builder b, int length, var keys) {
       var public_key = keys.int_at(idx);
       ;;throw_unless(at(at(36, kok);
       
-      var signature_cell = signature~load_ref();
-      var signature_slice = signature_cell.begin_parse();
-      var slice_copy = signature_slice;
-      
-      signature_slice.end_parse();
+      var slice_copy = signature;
 
       throw_unless(37, check_signature(hash, slice_copy, public_key));
 
-      storedMessageSignatures~udict_set_ref(4, idx, signature_cell);
+      storedMessageSignatures~udict_set_ref(4, idx, begin_cell().store_slice(signature).end_cell());
     }
   } until (~ ok);
   
@@ -222,9 +218,6 @@ int seqno() method_id {
 
 (int, int) getKey(int id) method_id {
   var res = get_data().begin_parse().skip_bits(36).preload_keys().int_at(id);
-  if (res.null?()) {
-    return (0, 0);
-  }
   return (-1, res);
 }
 (int, int) getId(int key) method_id {
@@ -232,10 +225,11 @@ int seqno() method_id {
   int index = 0;
   int length = keys.tuple_len();
   do {
-    if (keys.int_at(index) == key) {
-      return (-1, index);
-    }
-  } until (index == length);
+    index += 1;
+  } until ((index == length) | (keys.int_at(index) == key));
+  if (keys.int_at(index)) {
+    return (-1, index);
+  }
   return (0, 0);
 }
 
