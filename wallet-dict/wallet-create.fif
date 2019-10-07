@@ -105,11 +105,14 @@ nCells 0 reverse
 // Create tuple with cells
 nCells tuple const keyCells
 
-// messages:(HashmapE 256 (MultiSigWrapperStorage X))
+// messages:(HashmapE 256 ^(MultiSigWrapperStorage X))
 dictnew
 0 { dup 1+ swap  // Create a counter
   messages swap [] // Get n-th value v
+  dup <b swap ref, // ~
+
   swap hashu       // Get x
+
   3 roll           // Get dictionary s
   256              // Get n
   b>idict!
@@ -121,7 +124,7 @@ dictnew
 // code
 "wallet-code.fif" include
 // data
-// storage$_ seqno:uint32 minSigs:(## 4) n:(## 4) keys:[ ^PubKeys ] messages:(HashmapE 256 (MultiSigWrapperStorage X)) 
+// storage$_ seqno:uint32 minSigs:(## 4) n:(## 4) keys:[ ^PubKeys ] messages:(HashmapE 256 ^(MultiSigWrapperStorage X)) 
 //           { minSigs > 0 } { n >= minSigs } { n <= 10 } { minSigs <= 10 } = Storage X;
 <b 0 32 u, 
    k 4 u, 

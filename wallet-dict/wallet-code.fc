@@ -1,5 +1,7 @@
 ;; Multisig wallet smart contract
 
+cell preload_refidx(slice s, int index) asm "PLDREFVAR";
+
 ;; Tuple manipulation primitives for integers
 tuple tuple_set(tuple t, int index, int value) asm(t value index) "SETINDEXVARQ";
 (tuple, ()) ~tuple_set(tuple t, int index, int value) asm(t value index) "SETINDEXVARQ";
@@ -10,19 +12,17 @@ tuple tuple_setcell(tuple t, int index, cell value) asm(t value index) "SETINDEX
 
 int tuple_len(tuple t) asm "TLEN";
 
-int udict_has?(cell dict, int key_len, int index) asm(index dict key_len) "DICTUGET" "SWAP" "DROP";
-
 ;; Cleanup expired partial orders
 ;; messages
 (cell, ()) ~collect_garbage(cell messages) {
   var hash = -1;
   do {
-    (hash, var cs, int ok) = messages.udict_get_next?(256, hash);
+    (hash, var cs, var ok) = messages.udict_get_next?(256, hash);
     if (ok) {
 
       ;; modeMessage$_ mode:uint8 body:^(Message X) = ModeMessage X;
       ;; wrappedMessage$_ expires_at:uint32 seqno:uint32 body:(ModeMessage X) = WrappedMessage X;
-      ;; multiSigWrapperStorage$_ signatures:(HashmapE 4 Signature) message:(WrappedMessage X) = MultiSigWrapperStorage X;
+      ;; multiSigWrapperStorage$_ signatures:(HashmapE 4 ^Signature) message:(WrappedMessage X) = MultiSigWrapperStorage X;
       ;;
       ;; Skip signatures, check expiry
       ;;
@@ -36,20 +36,20 @@ int udict_has?(cell dict, int key_len, int index) asm(index dict key_len) "DICTU
   return (messages, ());
 }
 
-;; keys
-(slice, (tuple, tuple)) ~load_keys(slice data) {
-  int length = data~load_uint(4);
+;; messages
+(slice, (tuple, tuple)) ~load_keys(slice messages) {
+  int length = messages~load_uint(4);
   int index = 0;
   var keys = nil;
   var keys_cells = nil;
-  var keys_cell = data~load_ref();
+  var keys_cell = messages~load_ref();
   keys_cells~tuple_setcell(index / 3, keys_cell);
   var keys_slice = keys_cell.begin_parse();
   do {
     if ((index % 3 == 0)) {
       if ((index < 9) & (index > 0)) {
         keys_slice.end_parse();
-        var keys_cell = data~load_ref();
+        var keys_cell = messages~load_ref();
         keys_cells~tuple_setcell(index / 3, keys_cell);
         var keys_slice = keys_cell.begin_parse();
       } else {
@@ -65,18 +65,18 @@ int udict_has?(cell dict, int key_len, int index) asm(index dict key_len) "DICTU
   } until (index == length);
   keys_slice.end_parse();
 
-  return (data, (keys, keys_cells));
+  return (messages, (keys, keys_cells));
 }
-;; keys
-tuple preload_keys(slice data) {
-  int length = data~load_uint(4);
+;; messages
+tuple preload_keys(slice messages) {
+  int length = messages~load_uint(4);
   int index = 0;
   var keys = nil;
-  var keys_slice = data~load_ref().begin_parse();
+  var keys_slice = messages~load_ref().begin_parse();
   do {
     if ((index % 3 == 0)) {
       if ((index < 9) & (index > 0)) {
-        var keys_slice = data~load_ref().begin_parse();
+        var keys_slice = messages~load_ref().begin_parse();
       } else {
         var keys_slice = keys_slice.preload_ref().begin_parse();
       }
@@ -89,14 +89,14 @@ tuple preload_keys(slice data) {
   return keys;
 }
 
-slice skip_keys(slice data) {
-  int length = data~load_uint(4);
+slice skip_keys(slice messages) {
+  int length = messages~load_uint(4);
   length = min(length / 3, 3);
   int index = 0;
   do {
-    data~load_ref();
+    messages~load_ref();
   } until (index == length);
-  return data;
+  return messages;
 }
 builder store_keys(builder b, int length, var keys) {
   b~store_uint(4, length);
@@ -118,7 +118,7 @@ builder store_keys(builder b, int length, var keys) {
   ;; do nothing for internal messages
 }
 
-;; multiSigWrapper$0 keys_signatures:(HashmapE 4 Signature) message:(WrappedMessage X) = MultiSigWrapper X;
+;; multiSigWrapper$0 keys_signatures:(HashmapE 4 ^Signature) message:(WrappedMessage X) = MultiSigWrapper X;
 () recv_external(slice in_msg) impure {
   ;; Check if multiSigWrapper$0 or future unsupported protocol
   throw_unless(32, in_msg~load_uint(1));
@@ -138,7 +138,7 @@ builder store_keys(builder b, int length, var keys) {
   ;; We will need the hash anyway
   int hash = slice_hash(in_msg);
   
-  ;; storage$_ seqno:uint32 minSigs:(## 4) keys:[ ^PubKeys ] messages:(HashmapE 256 (StoredMessage X)) = Storage X;
+  ;; storage$_ seqno:uint32 minSigs:(## 4) keys:(HashmapE 4 ^PubKey) messages:(HashmapE 256 ^(StoredMessage X)) = Storage X;
   slice stored_data = get_data().begin_parse();
   (int stored_seqno, int min_sigs, (var keys, var kcells), var messages) = (stored_data~load_uint(32), stored_data~load_uint(4), stored_data~load_keys(), stored_data~load_dict());
   stored_data.end_parse();
@@ -158,15 +158,16 @@ builder store_keys(builder b, int length, var keys) {
     ;; multiSigWrapperStorage$_ signatures:(HashmapE 4 ^Signature) message:(WrappedMessage X) = MultiSigWrapperStorage X;
     ;;
     ;; Load signatures
-    var storedMessageSignatures = storedMessage.begin_parse().preload_dict();
+    var storedMessageSignatures = storedMessage~load_ref().begin_parse().preload_dict();
+    storedMessage.end_parse();
   }
 
   accept_message();
   message_data~touch();
 
-  int idx = 0;
+  var idx = -1;
   do {
-    (idx, var signature, int ok) = signatures.udict_get_next?(4, idx);
+    (idx, var signature, var ok) = signatures.udict_get_next?(4, idx);
     if (ok) {
       var public_key = keys.int_at(idx);
       ;;throw_unless(at(at(36, kok);
@@ -186,11 +187,11 @@ builder store_keys(builder b, int length, var keys) {
   var (mode, message) = (message_data~load_uint(8), message_data~load_ref());
   message_data.end_parse();
 
-  int count = 0;
-  int sent = 0;
-  int idx = 0;
+  var count = 0;
+  var sent = 0;
+  var idx = -1;
   do {
-    (idx, var signature, int ok) = storedMessageSignatures.udict_get_next?(4, idx);
+    (idx, var signature, var ok) = storedMessageSignatures.udict_get_next?(4, idx);
     if (ok) {
       count += 1;
       if (count >= min_sigs) {
@@ -203,14 +204,14 @@ builder store_keys(builder b, int length, var keys) {
   
   ;; modeMessage$_ mode:uint8 body:^(Message X) = ModeMessage X;
   ;; wrappedMessage$_ expires_at:uint32 seqno:uint32 body:(ModeMessage X) = WrappedMessage X;
-  ;; multiSigWrapperStorage$_ signatures:(HashmapE 4 Signature) message:(WrappedMessage X) = MultiSigWrapperStorage X;
+  ;; multiSigWrapperStorage$_ signatures:(HashmapE 4 ^Signature) message:(WrappedMessage X) = MultiSigWrapperStorage X;
   ;;
   if (count < min_sigs) {
     messages~udict_set_ref(256, hash, begin_cell().store_dict(storedMessageSignatures).store_uint(expires_at, 32).store_uint(msg_seqno, 32).store_uint(mode, 8).store_ref(message).end_cell());
   }
   messages~collect_garbage();
 
-  ;; storage$_ seqno:uint32 minSigs:(## 4) keys:[ ^PubKeys ] messages:(HashmapE 256 (Message X)) = Storage X;
+  ;; storage$_ seqno:uint32 minSigs:(## 4) keys:(HashmapE 4 ^PubKey) messages:(HashmapE 256 ^(Message X)) = Storage X;
   set_data(begin_cell().store_uint(stored_seqno + 1, 32).store_uint(min_sigs, 4).store_keys(keys.tuple_len(), kcells).store_dict(messages).end_cell());
 }
 
@@ -245,25 +246,5 @@ int seqno() method_id {
 (cell) getPartialsById(int id) method_id {
   cell messages = get_data().begin_parse().skip_bits(36).skip_keys().preload_dict();
   cell messages_found = new_dict();
-
-  int idx = 0;
-  do {
-    (idx, var message, int ok) = messages.udict_get_next?(256, idx);
-    if (ok) {
-      var contents = message.preload_ref();
-      if (contents.begin_parse().preload_dict().udict_has?(4, id)) {
-        messages_found~udict_set_ref(256, idx, contents);
-      }
-    }
-  } until (~ ok);
-  
   return messages_found;
-}
-
-(cell) getPartialsByKey(int key) method_id {
-  (int ok, int id) = getId(key);
-  ifnot (ok) {
-    return new_dict();
-  }
-  return getPartialsById(id);
 }

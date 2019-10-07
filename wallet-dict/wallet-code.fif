@@ -14,7 +14,6 @@ PROGRAM{
   66593 DECLMETHOD getId
   124239 DECLMETHOD getPartials
   87848 DECLMETHOD getPartialsById
-  110845 DECLMETHOD getPartialsByKey
   ~collect_garbage PROC:<{
     -1 PUSHINT
     UNTIL:<{
@@ -234,7 +233,7 @@ PROGRAM{
     }>
     ACCEPT
     s0 s9 XCHG
-    0 PUSHINT
+    -1 PUSHINT
     UNTIL:<{
       s11 PUSH
       4 PUSHINT
@@ -273,7 +272,7 @@ PROGRAM{
     LDREF
     ENDS
     0 PUSHINT
-    DUP
+    -1 PUSHINT
     UNTIL:<{
       s7 PUSH
       4 PUSHINT
@@ -406,58 +405,12 @@ PROGRAM{
     PLDDICT
   }>
   getPartialsById PROC:<{
+    DROP
     c4 PUSH
     CTOS
     36 PUSHINT
     SDSKIPFIRST
     skip_keys CALLDICT
     PLDDICT
-    NEWDICT
-    0 PUSHINT
-    UNTIL:<{
-      s2 PUSH
-      8 PUSHPOW2
-      DICTUGETNEXT
-      NULLSWAPIFNOT
-      NULLSWAPIFNOT
-      DUP
-      IF:<{
-        s0 s2 XCHG
-        PLDREF
-        DUP
-        CTOS
-        PLDDICT
-        s6 s(-1) PUXC
-        4 PUSHINT
-        DICTUGET
-        NIP
-        IF:<{
-          SWAP
-          8 PUSHPOW2
-          s1 s4 s4 PUXC2
-          DICTUSETREF
-        }>ELSE<{
-          s1 s3 XCHG
-          DROP
-        }>
-      }>ELSE<{
-        2SWAP
-        DROP
-      }>
-      SWAP
-      NOT
-      s1 s2 XCHG
-    }>
-    s1 s3 XCHG
-    3 BLKDROP
-  }>
-  getPartialsByKey PROC:<{
-    getId CALLDICT
-    SWAP
-    IFNOTJMP:<{
-      DROP
-      NEWDICT
-    }>
-    getPartialsById CALLDICT
   }>
 }END>c

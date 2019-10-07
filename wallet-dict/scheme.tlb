@@ -14,11 +14,11 @@ modeMessage$_ mode:uint8 body:^(Message X) = ModeMessage X;
 wrappedMessage$_ expires_at:uint32 seqno:uint32 body:(ModeMessage X) = WrappedMessage X;
 
 // key ID => signature
-multiSigWrapper$0 signatures:(HashmapE 4 Signature) message:(WrappedMessage X) = MultiSigWrapper X;
+multiSigWrapper$0 signatures:(HashmapE 4 ^Signature) message:(WrappedMessage X) = MultiSigWrapper X;
 //multiSigFuture$1 = MultiSigWrapper X;
 
 // For internal storage, no constructor ID
-multiSigWrapperStorage$_ signatures:(HashmapE 4 Signature) message:(WrappedMessage X) = MultiSigWrapperStorage X;
+multiSigWrapperStorage$_ signatures:(HashmapE 4 ^Signature) message:(WrappedMessage X) = MultiSigWrapperStorage X;
 
 
 pubKeys1$_ key1:PubKey = PubKeys;
@@ -36,7 +36,7 @@ pubKeys3and$_ key1:PubKey key2:PubKey key3:PubKey _:^PubKeys = PubKeys;
 // in which case the last pubKeys3 constructor will contain a references to another PubKeys constructor,
 // leaving one reference free in the storage cell to store the messages hashmap.
 //
-storage$_ seqno:uint32 minSigs:(## 4) n:(## 4) keys:[ ^PubKeys ] messages:(HashmapE 256 (MultiSigWrapperStorage X)) 
+storage$_ seqno:uint32 minSigs:(## 4) n:(## 4) keys:[ ^PubKeys ] messages:(HashmapE 256 ^(MultiSigWrapperStorage X)) 
           { minSigs > 0 } { n >= minSigs } { n <= 10 } { minSigs <= 10 } = Storage X;
 
 // TON stuff
