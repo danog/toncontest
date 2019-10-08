@@ -44,7 +44,9 @@ b>
 <b now timeout + 32 u, seqno 32 u, send-mode 8 u, swap ref, b>
 
 dup ."signing message: " <s csr. cr
-dup hash wallet_pk ed25519_sign_uint
+dup hashu
+dup ."Hash: " x. cr cr
+wallet_pk ed25519_sign_uint
 
 // signature$_ R:bits256 s:bits256 = Signature;
 256 B>u@+ swap 256 B>u@ swap

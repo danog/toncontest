@@ -7,8 +7,9 @@
 $# 1 < ' usage if
 
 $1 +".pk" load-generate-keypair drop
-$1 +".pubkey" B>file
+dup $1 +".pubkey" B>file
 
 
 ."Wrote private key to " $1 +".pk" type cr 
-."Wrote public key to " $1 +".pubkey" type cr
+."Wrote public key to " $1 +".pubkey" type cr cr
+."Public key: " Bx. cr cr

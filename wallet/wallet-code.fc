@@ -261,3 +261,6 @@ int seqno() method_id {
   }
   return getPartialsById(id);
 }
+(cell) getPartialsByHash(int hash) method_id {
+  return get_data().begin_parse().skip_bits(36).skip_keys().preload_dict().udict_get_ref(256, hash);
+}

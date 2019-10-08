@@ -15,12 +15,10 @@ $2 =: output-file
 $3 =: key
 $4 parse-int =: key-id
 
-input-file constant inspect-this
-"inspect.fif" include cr 
-
 input-file +".boc" load-boc constant order
 key +".pk" load-keypair nip constant wallet_pk
 
+order "inspect-lib.fif" include cr 
 
 order <s
   // External message
