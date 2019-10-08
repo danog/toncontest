@@ -1,4 +1,71 @@
-0 variable x
-1 variable y
+"TonUtil.fif" include
 
-.s
+' constant : const
+{ file>B B>boc } : load-boc
+{
+  ."usage: " @' $0 type ." <message> <init-message>" cr
+  ."Runs the TON VM, using code and storage data from <init-message>.boc and <message>.boc as message." cr 1 halt
+} : usage
+$# 2 < ' usage if
+$1 +".boc" load-boc const message
+$2 +".boc" load-boc const init-boc
+
+// message$_ {X:Type} info:CommonMsgInfo
+//   init:(Maybe (Either StateInit ^StateInit))
+//   body:(Either X ^X) = Message X;
+
+init-boc <s
+  // External message
+  7 u@+ swap 68 <> { ."There seems to be an invalid header" cr } if // 1000100 => 68
+
+  8 i@+
+  256 u@+ -rot
+  ."Init wallet address:    " .addr cr
+  
+  Gram@+ nip // Ignore grams
+
+  1 u@+ swap
+  1- abort"This does not seem to be an init message"
+
+  1 u@+ swap
+  { ."Loading ref..." cr ref@ <s } if // Load ref to StateInit if ref
+  
+// _ split_depth:(Maybe (## 5)) special:(Maybe TickTock)
+//   code:(Maybe ^Cell) data:(Maybe ^Cell)
+//   library:(HashmapE 256 SimpleLib) = StateInit;
+
+
+  1 u@+ swap
+  { ."Has split_depth" cr 5 u@+ nip } if // Ignore split_depth
+
+  1 u@+ swap
+  { ."Has TikTok" cr 2 u@+ nip } if // Ignore TikTok ;)
+
+  1 u@+ swap
+  1- abort"No code!"
+  ref@+ constant code // Load code
+
+  1 u@+ swap
+  1- abort"No data!"
+  ref@+ <s constant storage // Load storage
+  
+  drop
+
+message <s
+  // External message
+  7 u@+ swap 68 <> { ."There seems to be an invalid header" cr } if // 1000100 => 68
+
+  8 i@+
+  256 u@+ -rot
+  ."Message wallet address: " .addr cr
+  
+  Gram@+ nip // Ignore grams
+
+  1 u@+ swap
+  abort"This seems to be an init message"
+
+constant message
+// message
+// code
+// storage
+message code storage .s runvmcode .s
