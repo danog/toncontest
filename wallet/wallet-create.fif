@@ -149,6 +149,12 @@ dup hash wc swap 2dup 2constant wallet_addr
 <b 0 32 u, -1 32 i, b>
 dup ."signing message: " <s csr. cr
 dup hash privkey ed25519_sign_uint rot
+
+
+// message$_ {X:Type} info:CommonMsgInfo
+//   init:(Maybe (Either StateInit ^StateInit))
+//   body:(Either X ^X) = Message X;
+
 <b b{1000100} s, wallet_addr addr, b{000010} s, swap <s s, b{0} s, swap B, swap <s s, b>
 dup ."External message for initialization is " <s csr. cr
 2 boc+>B dup Bx. cr

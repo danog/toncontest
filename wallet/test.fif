@@ -3,12 +3,13 @@
 ' constant : const
 { file>B B>boc } : load-boc
 {
-  ."usage: " @' $0 type ." <message> <init-message>" cr
-  ."Runs the TON VM, using code and storage data from <init-message>.boc and <message>.boc as message." cr 1 halt
+  ."usage: " @' $0 type ." <message> <init-message> <func>" cr
+  ."Runs the function with ID <func> in the TON VM, using code and storage data from <init-message>.boc and <message>.boc as message." cr 1 halt
 } : usage
 $# 2 < ' usage if
-$1 +".boc" load-boc const message
+$1 +".boc" load-boc const message-boc
 $2 +".boc" load-boc const init-boc
+$3 parse-int const function
 
 // message$_ {X:Type} info:CommonMsgInfo
 //   init:(Maybe (Either StateInit ^StateInit))
@@ -43,15 +44,15 @@ init-boc <s
 
   1 u@+ swap
   1- abort"No code!"
-  ref@+ constant code // Load code
+  ref@+ <s constant code // Load code
 
   1 u@+ swap
   1- abort"No data!"
-  ref@+ <s constant storage // Load storage
+  ref@+ constant storage // Load storage
   
   drop
 
-message <s
+message-boc <s
   // External message
   7 u@+ swap 68 <> { ."There seems to be an invalid header" cr } if // 1000100 => 68
 
@@ -65,7 +66,13 @@ message <s
   abort"This seems to be an init message"
 
 constant message
-// message
-// code
-// storage
-message code storage .s runvmcode .s
+
+// c7
+// [ magic:0x076ef1ea actions:Integer msgs_sent:Integer
+// unixtime:Integer block_lt:Integer trans_lt:Integer
+// rand_seed:Integer balance_remaining:[Integer (Maybe Cell)]
+// myself:MsgAddressInt global_config:(Maybe Cell)
+// ] = SmartContractInfo;
+0x076ef1ea 0 0 now <b 1234 32 u, b> hash 5 tuple 1 tuple constant ctx
+
+message function code storage ctx .s runvmctx

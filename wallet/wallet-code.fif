@@ -15,6 +15,7 @@ PROGRAM{
   124239 DECLMETHOD getPartials
   87848 DECLMETHOD getPartialsById
   110845 DECLMETHOD getPartialsByKey
+  73634 DECLMETHOD getPartialsByHash
   ~collect_garbage PROC:<{
     -1 PUSHINT
     UNTIL:<{
@@ -193,7 +194,7 @@ PROGRAM{
   recv_external PROC:<{
     1 LDU
     SWAP
-    32 THROWIFNOT
+    32 THROWIF
     DUP
     1 PLDU
     33 THROWIFNOT
@@ -454,5 +455,15 @@ PROGRAM{
       NEWDICT
     }>
     getPartialsById CALLDICT
+  }>
+  getPartialsByHash PROC:<{
+    c4 PUSH
+    CTOS
+    36 PUSHINT
+    SDSKIPFIRST
+    skip_keys CALLDICT
+    PLDDICT
+    8 PUSHPOW2
+    DICTUGETOPTREF
   }>
 }END>c
