@@ -1,10 +1,7 @@
 #!/usr/bin/env -S fift -s
 "TonUtil.fif" include
+"lib.fif" include
 
-' constant : const
-{ dup ."Loading order from file " type ."..." cr
-  file>B B>boc
-} : load-boc
 {
   ."usage: " @' $0 type ." <input1> <input2> [<input3> ...] <output>" cr
   ."Merges multisig <inputx>.boc files and writes result to <output>.boc" cr 1 halt
@@ -19,37 +16,25 @@ $# $() +".boc" const output-file
 
 ."Inspecting and merging " input-len . ."files..." cr
 input-files explode 1- swap
-
-load-boc
-dup "inspect-lib.fif" include cr
+load-boc "inspect-lib.fif" include cr
 message-hash const previous-hash
-<s
-  // External message
-  7 u@+ nip
-  8 i@+ nip
-  256 u@+ nip
-  Gram@+ nip
-  2 u@+ nip
+wallet-addr const previous-address
 
-  // multiSigWrapper$0 signatures:(HashmapE 4 Signature) message:(WrappedMessage X) = MultiSigWrapper X;
-  dict@+
-  s>c const wrapped-message // Store message in const
-  swap // put length on top, signatures right underneath
+// multiSigWrapper$0 signatures:(HashmapE 4 Signature) message:(WrappedMessage X) = MultiSigWrapper X;
+message-contents
+  1 u@+ nip // $0 was already verified
+  dict@+    // Read signatures
+  s>c const wrapped-message // Store rest of message in const
+  swap      // put length on top, signatures right underneath
 
 { swap // Get filename, signatures right underneath
-  load-boc
-  dup "inspect-lib.fif" include cr
+  load-boc "inspect-lib.fif" include cr
   message-hash previous-hash B= not abort"Hash mismatch!"
-  <s
-    // External message
-    7 u@+ nip
-    8 i@+ nip
-    256 u@+ nip
-    Gram@+ nip
-    2 u@+ nip
-
-    // multiSigWrapper$0 signatures:(HashmapE 4 Signature) message:(WrappedMessage X) = MultiSigWrapper X;
-    dict@
+  // I suppose it's ok if there are multiple wallet instances with the same messages on different workchains/at different addresses, we're all agreeing to sign the same message anyway
+  // wallet-address previous-address rot <> abort"Wallet address mismatch!" <> abort"Wallet address mismatch (different workchain)!"
+  message-contents
+    1 u@+ nip // $0 was already verified
+    dict@     // Read signatures
   4 { drop s, -1 } dictmerge
 } swap times
 
@@ -57,7 +42,11 @@ message-hash const previous-hash
 ."Fianl message signed by the following keys: "
 dup 4 { drop . ."- " -1 } dictforeach cr drop
 
-<b 68 7 u, wallet_addr addr, 0 Gram, 0 2 u, swap dict, wrapped-message <s s, b>
+// multiSigWrapper$0 signatures:(HashmapE 4 Signature) message:(WrappedMessage X) = MultiSigWrapper X;
+<b 0 1 u, swap dict, wrapped-message <s s, b>
+
+// Renerate external message
+<b 68 7 u, wallet-addr addr, 0 Gram, 0 1 u, swap append-msg-body b>
 
 2 boc+>B dup Bx. cr
 output-file tuck B>file

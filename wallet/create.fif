@@ -22,7 +22,7 @@ def? $7 { @' $7 } { "wallet-query" } cond constant savefile
 3 86400 * constant timeout   // external message expires in 3 days
 
 file-base +".addr" load-address
-2dup 2constant wallet_addr
+2dup 2constant wallet-addr
 ."Source wallet address = " 2dup .addr cr 6 .Addr cr
 key +".pk" load-keypair nip constant wallet_pk
 
@@ -75,7 +75,7 @@ wallet_pk ed25519_sign_uint
 //   init:(Maybe (Either StateInit ^StateInit))
 //   body:(Either X ^X) = Message X;
 //
-<b b{1000100} s, wallet_addr addr, 0 Gram, b{00} s,
+<b b{1000100} s, wallet-addr addr, 0 Gram, b{00} s,
    swap <s s, b>
 
 dup ."resulting external message: " <s csr. cr

@@ -1,0 +1,17 @@
+// b body -- b'
+{ tuck <s 2dup s-fits? not rot over 1 i, -rot
+  { drop swap ref, } { s, nip } cond
+} : append-msg-body
+
+// filename -- c
+{ dup ."Loading order from file " type ."..." cr
+  file>B B>boc
+} : load-boc
+
+// filename -- uint256
+{ dup ."Loading public key from file " type ."..." cr 
+  file>B dup Blen 32 <> abort"Public key must be exactly 32 bytes long"
+  256 B>u@
+} : load-pubkey
+
+' constant : const

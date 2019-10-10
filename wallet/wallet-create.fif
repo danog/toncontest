@@ -1,14 +1,5 @@
 "TonUtil.fif" include
-
-' constant : const
-
-{ dup ."Loading public key from file " type ."..." cr 
-  file>B dup Blen 32 <> abort"Public key must be exactly 32 bytes long"
-  256 B>u@
-} : load-pubkey
-{ dup ."Loading order from file " type ."..." cr
-  file>B B>boc
-} : load-boc
+"lib.fif" include
 
 { ."usage: " @' $0 type ." <workchain-id> <wallet-name> <n> <k> <privkey1> [<pubkey2> ...] [<boc1> <boc2>]" cr cr
   ."Creates a new multisignature wallet in specified workchain composed of <n> (1-10) keys." cr
@@ -52,67 +43,30 @@ cr
 // on success. Otherwise the unchanged dictionary s and 0 are returned.
 
 // Create dictionaries with keys and messages
-
-// Keys will be deserialized to a simple tuple, using the correct PubKeys constructor depending on the number n of keys left
-//
-// pubKeys1$_ key1:PubKey = PubKeys;
-// pubKeys2$_ key1:PubKey key2:PubKey = PubKeys;
-// pubKeys3$_ key1:PubKey key2:PubKey key3:PubKey = PubKeys;
-// pubKeys3and$_ key1:PubKey key2:PubKey key3:PubKey _:^PubKeys = PubKeys;
-//
-// keys:[ ^PubKeys ]
-
-// First create builders with groups of (at most) 3 keys each
-<b 
+dictnew
 0 { dup 1+ swap  // Create a counter
-  // Get builder b (or create a new one)
-  // if ($k && !($k % 3)) {
-  dup dup 3 mod 0<> not and { <b } { 2 roll } cond
+  dup keys swap [] // Get n-th value v
+  <b swap 256 u,   // ~
+  swap             // Get x
+  3 roll           // Get dictionary s
+  4                // Get n
+  b>udict!
+  not abort"Failure storing dictionary value!"
 
-  keys rot []    // Get n-th value x
-  256            // y
-  
-  u,             // Write uint
   swap
-} n times drop
+} n times drop const keys-dict
 
-// Then convert builders into cells, appropriately inserting references for nested pubkeys
-n 3 /c const nCeil   // Number of builders
-nCeil 1- const nRev  // Steps for reverse counter
-nCeil 3 > const shouldRef // Whether there are more than 3 builders and references must be created
-nCeil 1+ const nRoll // Steps for roll
+// Extract internal messages
+messages explode { } swap times
 
-nRev { dup 1- swap  // Create a reverse counter
-  rot // Get current builder
-  swap
-  // if ($x != $nRev && $x > 1 && $nCeil > 3)
-  dup nRev <> swap 1 > shouldRef and and { nCeil pick ref, } if
-
-  b>          // Close builder, create cell
-  nCeil -roll // Put cell at the back of the stack
-
-} nCeil times drop
-
-// Number of cells to store / Number of already referenced cells to delete
-nCeil 3 > { 3 nCeil 3 - } { nCeil 0 } cond const nRem const nCells
-
-// Drop all cells we already referenced
-' drop nRem times
-
-// Reverse order of cells
-nCells 0 reverse
-
-// Create tuple with cells
-nCells tuple const keyCells
-
-// messages:(HashmapE 256 (MultiSigWrapperStorage X))
 dictnew
 0 { dup 1+ swap  // Create a counter
   messages swap [] // Get n-th value v
+  dup <s           // ~
   swap hashu       // Get x
   3 roll           // Get dictionary s
   256              // Get n
-  b>idict!
+  udict!
   not abort"Failure storing dictionary value!"
 
   swap
@@ -125,8 +79,9 @@ dictnew
 //           { minSigs > 0 } { n >= minSigs } { n <= 10 } { minSigs <= 10 } = Storage X;
 <b 0 32 u, 
    k 4 u, 
-   nCells 4 u,
-   keyCells explode roll { swap ref, } nCells times
+   // nCells 4 u,
+   // keyCells explode roll { swap ref, } nCells times
+   keys-dict dict,
    messages-dict dict, 
 b>
 // no libraries
@@ -140,7 +95,7 @@ null
 <b b{0011} s, 3 roll ref, rot ref, swap dict, b> 
 
 dup ."StateInit: " <s csr. cr
-dup hash wc swap 2dup 2constant wallet_addr
+dup hash wc swap 2dup 2constant wallet-addr
 ."new wallet address = " 2dup .addr cr
 2dup file-base +".addr" save-address-verbose
 ."Non-bounceable address (for init): " 2dup 7 .Addr cr
@@ -155,7 +110,7 @@ dup hash privkey ed25519_sign_uint rot
 //   init:(Maybe (Either StateInit ^StateInit))
 //   body:(Either X ^X) = Message X;
 
-<b b{1000100} s, wallet_addr addr, b{000010} s, swap <s s, b{0} s, swap B, swap <s s, b>
+<b b{1000100} s, wallet-addr addr, b{000010} s, swap <s s, b{0} s, swap B, swap <s s, b>
 dup ."External message for initialization is " <s csr. cr
 2 boc+>B dup Bx. cr
 file-base +"-create.boc" tuck B>file

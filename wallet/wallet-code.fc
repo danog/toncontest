@@ -36,80 +36,6 @@ int udict_has?(cell dict, int key_len, int index) asm(index dict key_len) "DICTU
   return (messages, ());
 }
 
-;; keys
-(slice, (tuple, tuple)) ~load_keys(slice data) {
-  int length = data~load_uint(4);
-  int index = 0;
-  var keys = nil;
-  var keys_cells = nil;
-  var keys_cell = data~load_ref();
-  keys_cells~tuple_setcell(index / 3, keys_cell);
-  var keys_slice = keys_cell.begin_parse();
-  do {
-    if ((index % 3 == 0)) {
-      if ((index < 9) & (index > 0)) {
-        keys_slice.end_parse();
-        var keys_cell = data~load_ref();
-        keys_cells~tuple_setcell(index / 3, keys_cell);
-        var keys_slice = keys_cell.begin_parse();
-      } else {
-        var newkeys_slice = keys_slice.preload_ref().begin_parse();
-        keys_slice.end_parse();
-        keys_slice = newkeys_slice;
-      }
-    }
-    int key = keys_slice.preload_uint(256);
-
-    keys~tuple_set(index, key);
-    index += 1;
-  } until (index == length);
-  keys_slice.end_parse();
-
-  return (data, (keys, keys_cells));
-}
-;; keys
-tuple preload_keys(slice data) {
-  int length = data~load_uint(4);
-  int index = 0;
-  var keys = nil;
-  var keys_slice = data~load_ref().begin_parse();
-  do {
-    if ((index % 3 == 0)) {
-      if ((index < 9) & (index > 0)) {
-        var keys_slice = data~load_ref().begin_parse();
-      } else {
-        var keys_slice = keys_slice.preload_ref().begin_parse();
-      }
-    }
-    int key = keys_slice~load_uint(256);
-    keys~tuple_set(index, key);
-    index += 1;
-  } until (index == length);
-
-  return keys;
-}
-
-slice skip_keys(slice data) {
-  int length = data~load_uint(4);
-  length = min(length / 3, 3);
-  int index = 0;
-  do {
-    data~load_ref();
-  } until (index == length);
-  return data;
-}
-builder store_keys(builder b, int length, var keys) {
-  b~store_uint(4, length);
-
-  length = keys.tuple_len();
-  int index = 0;
-  do {
-    b.store_ref(keys.cell_at(index));
-    index += 1;
-  } until (index == length);
-  return b;
-}
-
 () store_db(int seqno, cell keys, cell messages) {
   set_data(begin_cell().store_uint(seqno, 32).store_dict(keys).store_dict(messages).end_cell());
 }
@@ -140,7 +66,7 @@ builder store_keys(builder b, int length, var keys) {
   
   ;; storage$_ seqno:uint32 minSigs:(## 4) keys:[ ^PubKeys ] messages:(HashmapE 256 (StoredMessage X)) = Storage X;
   slice stored_data = get_data().begin_parse();
-  (int stored_seqno, int min_sigs, (var keys, var kcells), var messages) = (stored_data~load_uint(32), stored_data~load_uint(4), stored_data~load_keys(), stored_data~load_dict());
+  (int stored_seqno, int min_sigs, var keys, var messages) = (stored_data~load_uint(32), stored_data~load_uint(4), stored_data~load_dict(), stored_data~load_dict());
   stored_data.end_parse();
 
   ;; This is a new message, so there will be no stored messages
@@ -168,12 +94,12 @@ builder store_keys(builder b, int length, var keys) {
   do {
     (idx, var signature, int ok) = signatures.udict_get_next?(4, idx);
     if (ok) {
-      var public_key = keys.int_at(idx);
-      ;;throw_unless(at(at(36, kok);
+      (var public_key, ok) = keys.udict_get?(4, idx);
+      throw_unless(36, ok);
       
       var slice_copy = signature;
 
-      throw_unless(37, check_signature(hash, slice_copy, public_key));
+      throw_unless(37, check_signature(hash, slice_copy, public_key.preload_uint(256)));
 
       storedMessageSignatures~udict_set_ref(4, idx, begin_cell().store_slice(signature).end_cell());
     }
@@ -207,7 +133,7 @@ builder store_keys(builder b, int length, var keys) {
   messages~collect_garbage();
 
   ;; storage$_ seqno:uint32 minSigs:(## 4) keys:[ ^PubKeys ] messages:(HashmapE 256 (Message X)) = Storage X;
-  set_data(begin_cell().store_uint(stored_seqno + 1, 32).store_uint(min_sigs, 4).store_keys(keys.tuple_len(), kcells).store_dict(messages).end_cell());
+  set_data(begin_cell().store_uint(stored_seqno + 1, 32).store_uint(min_sigs, 4).store_dict(keys).store_dict(messages).end_cell());
 }
 
 ;; Get methods
@@ -217,27 +143,30 @@ int seqno() method_id {
 }
 
 (int, int) getKey(int id) method_id {
-  var res = get_data().begin_parse().skip_bits(36).preload_keys().int_at(id);
-  return (-1, res);
+  (var res, int ok) = get_data().begin_parse().skip_bits(36).preload_dict().udict_get?(4, id);
+  if (~ ok) {
+    return (ok, 0);
+  }
+  return (-1, res.preload_uint(256));
 }
 (int, int) getId(int key) method_id {
-  var keys = get_data().begin_parse().skip_bits(36).preload_keys();
-  int index = 0;
-  int length = keys.tuple_len();
+  var keys = get_data().begin_parse().skip_bits(36).preload_dict();
+  int idx = 0;
+  int ok = 0;
   do {
-    index += 1;
-  } until ((index == length) | (keys.int_at(index) == key));
-  if (keys.int_at(index)) {
-    return (-1, index);
+    (idx, var keyRead, ok) = keys.udict_get_next?(4, idx);
+  } until ((~ ok) | (keyRead.preload_uint(256) == key));
+  if (ok) {
+    return (-1, idx);
   }
   return (0, 0);
 }
 
 (cell) getPartials() method_id {
-  return get_data().begin_parse().skip_bits(36).skip_keys().preload_dict();
+  return get_data().begin_parse().skip_bits(36).skip_dict().preload_dict();
 }
 (cell) getPartialsById(int id) method_id {
-  cell messages = get_data().begin_parse().skip_bits(36).skip_keys().preload_dict();
+  cell messages = get_data().begin_parse().skip_bits(36).skip_dict().preload_dict();
   cell messages_found = new_dict();
 
   int idx = 0;
@@ -262,5 +191,5 @@ int seqno() method_id {
   return getPartialsById(id);
 }
 (cell) getPartialsByHash(int hash) method_id {
-  return get_data().begin_parse().skip_bits(36).skip_keys().preload_dict().udict_get_ref(256, hash);
+  return get_data().begin_parse().skip_bits(36).skip_dict().preload_dict().udict_get_ref(256, hash);
 }

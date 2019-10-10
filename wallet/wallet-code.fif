@@ -2,10 +2,6 @@
 // automatically generated from `/home/daniil/repos/contest/lib/crypto/smartcont/stdlib.fc` `wallet-code.fc` 
 PROGRAM{
   DECLPROC ~collect_garbage
-  DECLPROC ~load_keys
-  DECLPROC preload_keys
-  DECLPROC skip_keys
-  DECLPROC store_keys
   DECLPROC store_db
   DECLPROC recv_internal
   DECLPROC recv_external
@@ -49,136 +45,6 @@ PROGRAM{
     }>
     DROP
   }>
-  ~load_keys PROC:<{
-    4 LDU
-    0 PUSHINT
-    PUSHNULL
-    PUSHNULL
-    s0 s3 XCHG
-    LDREF
-    s4 s1 XCPU
-    0 PUSHINT
-    SETINDEXVARQ
-    SWAP
-    CTOS
-    UNTIL:<{
-      s3 PUSH
-      3 PUSHINT
-      MOD
-      0 EQINT
-      IF:<{
-        s3 PUSH
-        9 LESSINT
-        s4 PUSH
-        0 GTINT
-        AND
-        IF:<{
-          DUP
-          ENDS
-          s0 s4 XCHG
-          LDREF
-          s4 PUSH
-          3 PUSHINT
-          DIV
-          s3 s2 s(-1) XCPUXC
-          SETINDEXVARQ
-          NIP
-        }>ELSE<{
-          DUP
-          PLDREF
-          CTOS
-          SWAP
-          ENDS
-          s4 s4 XCHG2
-        }>
-      }>ELSE<{
-        s4 s4 XCHG2
-      }>
-      s4 PUSH
-      256 PLDU
-      s3 s0 s4 XC2PU
-      SETINDEXVARQ
-      s0 s3 XCHG
-      INC
-      s0 s5 PUSH2
-      EQUAL
-      s5 s4 s0 XCHG3
-      s3 s3 s0 XCHG3
-    }>
-    s3 POP
-    s4 POP
-    SWAP
-    ENDS
-    ROT
-  }>
-  preload_keys PROC:<{
-    4 LDU
-    0 PUSHINT
-    PUSHNULL
-    s0 s2 XCHG
-    LDREF
-    DROP
-    CTOS
-    UNTIL:<{
-      OVER
-      3 PUSHINT
-      MOD
-      0 EQINT
-      IF:<{
-        OVER
-        9 LESSINT
-        s2 PUSH
-        0 GTINT
-        AND
-        IF:<{
-        }>ELSE<{
-        }>
-      }>
-      256 LDU
-      s3 s3 s2 XC2PU
-      SETINDEXVARQ
-      SWAP
-      INC
-      s0 s3 PUSH2
-      EQUAL
-      s1 s3 s0 XCHG3
-    }>
-    s2 s3 XCHG
-    3 BLKDROP
-  }>
-  skip_keys PROC:<{
-    4 LDU
-    SWAP
-    3 PUSHINT
-    DIV
-    3 PUSHINT
-    MIN
-    UNTIL:<{
-      SWAP
-      LDREF
-      NIP
-      OVER
-      0 EQINT
-      s1 s2 XCHG
-    }>
-    DROP
-  }>
-  store_keys PROC:<{
-    4 PUSHINT
-    2SWAP
-    STUX
-    OVER
-    TLEN
-    s2 POP
-    0 PUSHINT
-    UNTIL:<{
-      INC
-      s0 s2 PUSH2
-      EQUAL
-    }>
-    DROP
-    NIP
-  }>
   store_db PROC:<{
     NEWC
     s1 s3 XCHG
@@ -212,39 +78,45 @@ PROGRAM{
     CTOS
     32 LDU
     4 LDU
-    ~load_keys CALLDICT
-    s0 s2 XCHG
+    LDDICT
     LDDICT
     ENDS
     NEWDICT
-    s5 s7 PUSH2
+    s4 s6 PUSH2
     EQUAL
     IF:<{
-      s0 s5 XCHG
+      s0 s4 XCHG
       INC
     }>ELSE<{
-      s6 s1 PUSH2
+      s5 s1 PUSH2
       8 PUSHPOW2
       DICTUGET
       NULLSWAPIFNOT
       NIP
       35 THROWIFNOT
-      s0 s5 XCHG
+      s0 s4 XCHG
     }>
     ACCEPT
-    s0 s9 XCHG
+    s0 s8 XCHG
     0 PUSHINT
     UNTIL:<{
-      s11 PUSH
+      s10 PUSH
       4 PUSHINT
       DICTUGETNEXT
       NULLSWAPIFNOT
       NULLSWAPIFNOT
       DUP
       IF:<{
-        s5 s1 PUSH2
-        INDEXVAR
-        s10 s3 s(-2) PU2XC
+        DROP
+        s0 s4 PUSH2
+        4 PUSHINT
+        DICTUGET
+        NULLSWAPIFNOT
+        DUP
+        36 THROWIFNOT
+        s3 s(-1) s0 PUXC2
+        256 PLDU
+        s10 s2 s2 PUXC2
         CHKSIGNU
         37 THROWIFNOT
         NEWC
@@ -253,26 +125,26 @@ PROGRAM{
         ENDC
         SWAP
         4 PUSHINT
-        s1 s9 s9 PUXC2
+        s1 s8 s8 PUXC2
         DICTUSETREF
       }>ELSE<{
-        s8 s2 XCHG2
+        s7 s2 XCHG2
         DROP
       }>
       SWAP
       NOT
-      s1 s7 XCHG
+      s1 s6 XCHG
     }>
     DROP
-    s10 POP
-    s0 s9 XCHG
+    s9 POP
+    s0 s8 XCHG
     8 LDU
     LDREF
     ENDS
     0 PUSHINT
     DUP
     UNTIL:<{
-      s7 PUSH
+      s6 PUSH
       4 PUSHINT
       DICTUGETNEXT
       NULLSWAPIFNOT
@@ -282,64 +154,58 @@ PROGRAM{
       IF:<{
         s0 s2 XCHG
         INC
-        s0 s7 PUSH2
+        s0 s6 PUSH2
         GEQ
         IF:<{
           NIP
           s2 s3 PUSH2
           SENDRAWMSG
           8 PUSHPOW2
-          s9 s13 s13 PUXC2
+          s8 s12 s12 PUXC2
           DICTUDEL
           DROP
           0 PUSHINT
         }>ELSE<{
-          s13 s13 XCHG2
+          s12 s12 XCHG2
         }>
       }>ELSE<{
-        s0 s13 s13 XCHG3
+        s0 s12 s12 XCHG3
       }>
       NOT
-      s13 s13 s0 XCHG3
+      s12 s12 s0 XCHG3
     }>
     DROP
-    s5 PUSH
+    s4 PUSH
     LESS
     IF:<{
       NEWC
-      s1 s6 XCHG
+      s1 s5 XCHG
       STDICT
-      s1 s8 XCHG
+      s1 s7 XCHG
       32 STU
-      s1 s6 XCHG
+      s1 s5 XCHG
       32 STU
-      s1 s6 XCHG
+      s1 s5 XCHG
       8 STU
-      s1 s2 XCHG
       STREF
       ENDC
-      s0 s0 s6 XCHG3
+      s0 s1 s5 XCHG3
       8 PUSHPOW2
       DICTUSETREF
     }>ELSE<{
-      s4 s10 XCHG
-      s3 s8 XCHG
-      s2 s7 XCHG
-      s4 s6 XCHG
+      s2 s9 XCHG
+      s3 s7 XCHG
+      s2 s6 XCHG
       6 BLKDROP
     }>
     ~collect_garbage CALLDICT
-    s0 s3 XCHG
+    s0 s2 XCHG
     INC
     NEWC
     32 STU
-    s1 s4 XCHG
     4 STU
-    s0 s3 XCHG
-    TLEN
-    s2 s3 XCHG
-    SWAP
-    store_keys CALLDICT
+    s1 s2 XCHG
+    STDICT
     STDICT
     ENDC
     c4 POP
@@ -354,37 +220,48 @@ PROGRAM{
     CTOS
     36 PUSHINT
     SDSKIPFIRST
-    preload_keys CALLDICT
-    SWAP
-    INDEXVAR
+    PLDDICT
+    4 PUSHINT
+    DICTUGET
+    NULLSWAPIFNOT
+    DUP
+    NOT
+    IFJMP:<{
+      NIP
+      0 PUSHINT
+    }>
+    DROP
     -1 PUSHINT
     SWAP
+    256 PLDU
   }>
   getId PROC:<{
     c4 PUSH
     CTOS
     36 PUSHINT
     SDSKIPFIRST
-    preload_keys CALLDICT
+    PLDDICT
     0 PUSHINT
-    OVER
-    TLEN
+    DUP
     UNTIL:<{
-      SWAP
-      INC
-      s0 s1 PUSH2
-      EQUAL
-      s3 s1 PUSH2
-      INDEXVAR
+      DROP
+      OVER
+      4 PUSHINT
+      DICTUGETNEXT
+      NULLSWAPIFNOT
+      NULLSWAPIFNOT
+      DUP
+      NOT
+      s0 s3 XCHG
+      256 PLDU
       s5 PUSH
       EQUAL
+      s1 s3 XCHG
       OR
       s1 s2 XCHG
     }>
-    DROP
     s2 POP
-    OVER
-    INDEXVAR
+    s2 POP
     IFJMP:<{
       -1 PUSHINT
       SWAP
@@ -398,7 +275,7 @@ PROGRAM{
     CTOS
     36 PUSHINT
     SDSKIPFIRST
-    skip_keys CALLDICT
+    SKIPDICT
     PLDDICT
   }>
   getPartialsById PROC:<{
@@ -406,7 +283,7 @@ PROGRAM{
     CTOS
     36 PUSHINT
     SDSKIPFIRST
-    skip_keys CALLDICT
+    SKIPDICT
     PLDDICT
     NEWDICT
     0 PUSHINT
@@ -461,7 +338,7 @@ PROGRAM{
     CTOS
     36 PUSHINT
     SDSKIPFIRST
-    skip_keys CALLDICT
+    SKIPDICT
     PLDDICT
     8 PUSHPOW2
     DICTUGETOPTREF

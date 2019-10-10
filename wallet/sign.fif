@@ -1,9 +1,7 @@
 #!/usr/bin/env -S fift -s
 "TonUtil.fif" include
+"lib.fif" include
 
-{ dup ."Loading order from file " type ."..." cr
-  file>B B>boc
-} : load-boc
 {
   ."usage: " @' $0 type ." <input> <output> <key> <key-id>" cr
   ."Signs multisig <input>.boc file with private key <key-id> loaded from file <key>.pk and writes result to <output>.boc" cr 1 halt
@@ -20,28 +18,32 @@ key +".pk" load-keypair nip constant wallet_pk
 
 order "inspect-lib.fif" include cr 
 
-order <s
-  // External message
-  7 u@+ nip
-  8 i@+ nip
-  256 u@+ nip
-  Gram@+ nip
-  2 u@+ nip
-
+// multiSigWrapper$0 signatures:(HashmapE 4 Signature) message:(WrappedMessage X) = MultiSigWrapper X;
+message-contents
+  1 u@+ nip   // $0 was already verified
+  
   // multiSigWrapper$0 signatures:(HashmapE 4 Signature) message:(WrappedMessage X) = MultiSigWrapper X;
-  dict@+ swap constant signatures
-  s>c constant wrapped-message
+  dict@+
+  s>c    // Message on top, signatures underneath
 
-wrapped-message ."signing message: " <s csr. cr
-wrapped-message hash wallet_pk ed25519_sign_uint
+dup ."signing message: " <s csr. cr
+dup hash wallet_pk ed25519_sign_uint
 
 256 B>u@+ swap 256 B>u@ swap
 <b swap 256 u, swap 256 u, b> <s
 
+roll
+// Now we have (message) value dict
 
-key-id signatures 4 udict! not abort"Failure adding signature!" constant signatures-final
+// udict! => value key dict bits
+key-id swap 4 udict! not abort"Failure adding signature!"
 
-<b 68 7 u, wallet_addr addr, 0 Gram, 0 2 u, signatures-final dict, wrapped-message <s s, b>
+// Now we have message dict
+// multiSigWrapper$0 signatures:(HashmapE 4 Signature) message:(WrappedMessage X) = MultiSigWrapper X;
+<b 0 1 u, swap dict, swap <s s, b>
+
+// Renerate external message
+<b 68 7 u, wallet-addr addr, 0 Gram, 0 1 u, swap append-msg-body b>
 
 2 boc+>B dup Bx. cr
 output-file +".boc" tuck B>file

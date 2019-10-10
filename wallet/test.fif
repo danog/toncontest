@@ -75,4 +75,5 @@ constant message
 // ] = SmartContractInfo;
 0x076ef1ea 0 0 now <b 1234 32 u, b> hash 5 tuple 1 tuple constant ctx
 
-message function code storage ctx .s runvmctx
+
+message function code storage ctx runvmctx .s

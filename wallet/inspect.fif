@@ -3,9 +3,7 @@
   ."Inspects contents of multisig <input>.boc file." cr 1 halt
 } : usage
 $# 1 < ' usage if
-$1 +".boc"
 
-dup ."Inspecting order from file " type ."..." cr
-file>B B>boc
+"lib.fif" include
 
-"inspect-lib.fif" include
+$1 +".boc" load-boc "inspect-lib.fif" include
