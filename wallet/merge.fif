@@ -18,7 +18,7 @@ $# $() +".boc" const output-file
 input-files explode 1- swap
 load-boc inspect cr
 message-hash const previous-hash
-wallet-addr const previous-address
+wallet-addr 2const previous-address
 
 // multiSigWrapper$0 signatures:(HashmapE 4 Signature) message:(WrappedMessage X) = MultiSigWrapper X;
 message-contents

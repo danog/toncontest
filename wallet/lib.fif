@@ -17,6 +17,7 @@
 } : load-pubkey
 
 ' constant : const
+' 2constant : 2const
 
 // D n -- uint
 {
@@ -113,7 +114,7 @@ variable-set sig-count sig-count!
     dup 4 dictlen sig-count!
 
     ."Signed by the following keys: "
-    4 { drop . ."- " -1 } dictforeach cr drop
+    4 { 64 B@ Bx. . ."- " -1 } dictforeach cr drop
 
     ."Hash: " dup s>c hashu dup x. cr
     message-hash!
@@ -129,51 +130,52 @@ variable-set sig-count sig-count!
     ."Seqno: " . cr
 
     1 u@+ swap
-    { ."Is code message!" cr ref@ <s quit } if
+    { ."Is code message!" cr }
+    {
+      8 u@+ swap
+      ."Mode: " . cr
 
-    8 u@+ swap
-    ."Mode: " . cr
-
-    // Now on to the actual message we're agreeing to sign
-    //
-    //  int_msg_info$0 ihr_disabled:Bool bounce:Bool bounced:Bool
-    //    src:MsgAddressInt dest:MsgAddressInt 
-    //    value:CurrencyCollection ihr_fee:Grams fwd_fee:Grams
-    //    created_lt:uint64 created_at:uint32 = CommonMsgInfo;
-    //  ext_in_msg_info$10 src:MsgAddressExt dest:MsgAddressInt 
-    //     import_fee:Grams = CommonMsgInfo;
-    //  ext_out_msg_info$11 src:MsgAddressInt dest:MsgAddressExt
-    //    created_lt:uint64 created_at:uint32 = CommonMsgInfo;
-    ."=>" cr ref@ <s
-
-    1 u@+ swap
-    { // External message *$1*
-      ."Inside: external message" cr
-    }
-    { // Internal message int_msg_info$0
-      ."Inside: internal message" cr
-      1 u@+ swap
-      ."Instant hypercube routing disabled? " . cr
+      // Now on to the actual message we're agreeing to sign
+      //
+      //  int_msg_info$0 ihr_disabled:Bool bounce:Bool bounced:Bool
+      //    src:MsgAddressInt dest:MsgAddressInt 
+      //    value:CurrencyCollection ihr_fee:Grams fwd_fee:Grams
+      //    created_lt:uint64 created_at:uint32 = CommonMsgInfo;
+      //  ext_in_msg_info$10 src:MsgAddressExt dest:MsgAddressInt 
+      //     import_fee:Grams = CommonMsgInfo;
+      //  ext_out_msg_info$11 src:MsgAddressInt dest:MsgAddressExt
+      //    created_lt:uint64 created_at:uint32 = CommonMsgInfo;
+      ."=>" cr ref@ <s
 
       1 u@+ swap
-      ."Bounce flag set? " . cr
+      { // External message *$1*
+        ."Inside: external message" cr
+      }
+      { // Internal message int_msg_info$0
+        ."Inside: internal message" cr
+        1 u@+ swap
+        ."Instant hypercube routing disabled? " . cr
 
-      1 u@+ swap
-      // ."Bounced flag set? " . cr
-      drop
+        1 u@+ swap
+        ."Bounce flag set? " . cr
 
-      2 u@+ nip // Drop src address constructor + flags
+        1 u@+ swap
+        // ."Bounced flag set? " . cr
+        drop
 
-      3 u@+ swap // Read dst address constructor + flags
-      // addr_std$10 anycast 0 => 100 => 4
-      4 <> abort"Unsupported address!" // Make things simple for now
+        2 u@+ nip // Drop src address constructor + flags
 
-      8 i@+
-      256 u@+ -rot
-      ."Destination address: " .addr cr
+        3 u@+ swap // Read dst address constructor + flags
+        // addr_std$10 anycast 0 => 100 => 4
+        4 <> abort"Unsupported address!" // Make things simple for now
 
-      Gram@+ swap
-      ."Grams: " .GR cr
+        8 i@+
+        256 u@+ -rot
+        ."Destination address: " .addr cr
+
+        Gram@+ swap
+        ."Grams: " .GR cr
+      } cond
     } cond
     drop
 } : inspect

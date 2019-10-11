@@ -42,9 +42,10 @@ cr
 // Extract keys
 keys explode
 
-dictnew 0      // Create counter and dict
+dup 1-         // Create counter
+dictnew swap   // ...and dict (swap the two)
 rot            // Put length on top for times
-{ dup 1+ swap  // Increment counter
+{ dup 1- swap  // Decrement counter
   3 roll           // Get n-th value v (val dict ncount curcount)
   <b swap 256 u,   // Create builder bval
   swap             // Get x            (dict ncount curcount bval)

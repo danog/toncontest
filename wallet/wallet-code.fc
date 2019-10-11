@@ -100,7 +100,6 @@ int udict_has?(cell dict, int key_len, int index) asm(index dict key_len) "DICTU
       throw_unless(36, ok);
       
       var slice_copy = signature;
-
       throw_unless(37, check_signature(hash, slice_copy, public_key.preload_uint(256)));
 
       if (~ storedMessageSignatures.udict_has?(4, idx)) {

@@ -1,6 +1,6 @@
 "TonUtil.fif" include
+"lib.fif" include
 
-' constant : const
 { file>B B>boc } : load-boc
 {
   ."usage: " @' $0 type ." <message> <init-message> <func>" cr
@@ -52,20 +52,7 @@ init-boc <s
   
   drop
 
-message-boc <s
-  // External message
-  7 u@+ swap 68 <> { ."There seems to be an invalid header" cr } if // 1000100 => 68
-
-  8 i@+
-  256 u@+ -rot
-  ."Message wallet address: " .addr cr
-  
-  Gram@+ nip // Ignore grams
-
-  1 u@+ swap
-  abort"This seems to be an init message"
-
-constant message
+message-boc inspect
 
 // c7
 // [ magic:0x076ef1ea actions:Integer msgs_sent:Integer
@@ -76,4 +63,7 @@ constant message
 0x076ef1ea 0 0 now 0 0 <b 1234 32 u, b> hash 7 tuple 1 tuple constant ctx
 
 
-message function code storage ctx runvmctx .s
+message-contents function code storage ctx runvmctx .s
+// rot
+// ."Signature: "
+// 64 B@ Bx.
