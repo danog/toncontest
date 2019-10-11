@@ -6,7 +6,7 @@
   ."usage: " @' $0 type ." <message> <init-message> <func>" cr
   ."Runs the function with ID <func> in the TON VM, using code and storage data from <init-message>.boc and <message>.boc as message." cr 1 halt
 } : usage
-$# 2 < ' usage if
+$# 3 < ' usage if
 $1 +".boc" load-boc const message-boc
 $2 +".boc" load-boc const init-boc
 $3 parse-int const function
@@ -73,7 +73,7 @@ constant message
 // rand_seed:Integer balance_remaining:[Integer (Maybe Cell)]
 // myself:MsgAddressInt global_config:(Maybe Cell)
 // ] = SmartContractInfo;
-0x076ef1ea 0 0 now <b 1234 32 u, b> hash 5 tuple 1 tuple constant ctx
+0x076ef1ea 0 0 now 0 0 <b 1234 32 u, b> hash 7 tuple 1 tuple constant ctx
 
 
 message function code storage ctx runvmctx .s

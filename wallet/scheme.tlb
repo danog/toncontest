@@ -18,20 +18,11 @@ multiSigWrapper$0 signatures:(HashmapE 4 Signature) message:(WrappedMessage X) =
 //multiSigFuture$1 = MultiSigWrapper X;
 
 // For internal storage, no constructor ID
-multiSigWrapperStorage$_ signatures:(HashmapE 4 Signature) message:(WrappedMessage X) = MultiSigWrapperStorage X;
+multiSigWrapperStorage$_ count:(## 4) signatures:(HashmapE 4 Signature) message:(WrappedMessage X) = MultiSigWrapperStorage X;
 
-
-pubKeys1$_ key1:PubKey = PubKeys;
-pubKeys2$_ key1:PubKey key2:PubKey = PubKeys;
-pubKeys3$_ key1:PubKey key2:PubKey key3:PubKey = PubKeys;
-
-pubKeys3and$_ key1:PubKey key2:PubKey key3:PubKey _:^PubKeys = PubKeys;
 
 // Not doing explicit versioning here, since the structure of the storage can only change after an update of the onchain wallet code
 // Max 10 keys (not sure about this, the contest instruction file says 10 in one place and 100 in another, so I chose 10 => 16 => 2^(4) )
-//
-// No need to use has
-//
 //
 storage$_ seqno:uint32 minSigs:(## 4) keys:(HashmapE 4 PubKey) messages:(HashmapE 256 (MultiSigWrapperStorage X)) 
           { minSigs > 0 } { n >= minSigs } { n <= 10 } { minSigs <= 10 } = Storage X;

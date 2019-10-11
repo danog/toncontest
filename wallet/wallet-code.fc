@@ -1,6 +1,6 @@
 ;; Multisig wallet smart contract
 
-;; Tuple manipulation primitives for integers
+;; (Now unused) tuple manipulation primitives for integers
 tuple tuple_set(tuple t, int index, int value) asm(t value index) "SETINDEXVARQ";
 (tuple, ()) ~tuple_set(tuple t, int index, int value) asm(t value index) "SETINDEXVARQ";
 
@@ -10,7 +10,9 @@ tuple tuple_setcell(tuple t, int index, cell value) asm(t value index) "SETINDEX
 
 int tuple_len(tuple t) asm "TLEN";
 
-int udict_has?(cell dict, int key_len, int index) asm(index dict key_len) "DICTUGET" "SWAP" "DROP";
+cell udict_set(cell dict, int key_len, int index, slice value) asm(value index dict key_len) "DICTUSET";
+(cell, ()) ~udict_set(cell dict, int key_len, int index, slice value) asm(value index dict key_len) "DICTUSET";
+int udict_has?(cell dict, int key_len, int index) asm(index dict key_len) "DICTUGET" "NULLSWAPIFNOT" "NIP";
 
 ;; Cleanup expired partial orders
 ;; messages
@@ -19,7 +21,6 @@ int udict_has?(cell dict, int key_len, int index) asm(index dict key_len) "DICTU
   do {
     (hash, var cs, int ok) = messages.udict_get_next?(256, hash);
     if (ok) {
-
       ;; modeMessage$_ mode:uint8 body:^(Message X) = ModeMessage X;
       ;; wrappedMessage$_ expires_at:uint32 seqno:uint32 body:(ModeMessage X) = WrappedMessage X;
       ;; multiSigWrapperStorage$_ signatures:(HashmapE 4 Signature) message:(WrappedMessage X) = MultiSigWrapperStorage X;
@@ -44,7 +45,7 @@ int udict_has?(cell dict, int key_len, int index) asm(index dict key_len) "DICTU
   ;; do nothing for internal messages
 }
 
-;; multiSigWrapper$0 keys_signatures:(HashmapE 4 Signature) message:(WrappedMessage X) = MultiSigWrapper X;
+;; multiSigWrapper$0 signatures:(HashmapE 4 Signature) message:(WrappedMessage X) = MultiSigWrapper X;
 () recv_external(slice in_msg) impure {
   ;; Check if multiSigWrapper$0 or future unsupported protocol
   throw_if(32, in_msg~load_uint(1));
@@ -56,7 +57,7 @@ int udict_has?(cell dict, int key_len, int index) asm(index dict key_len) "DICTU
   var signatures = in_msg~load_dict();
   slice message_data = in_msg;
 
-  ;; wrappedMessage$_ expires_at:uint32 seqno:uint32 body:^(Message X) = WrappedMessage X;
+  ;; wrappedMessage$_ expires_at:uint32 seqno:uint32 body:(ModeMessage X) = WrappedMessage X;
   (int expires_at, int msg_seqno) = (message_data~load_uint(32), message_data~load_uint(32));
   ;; Message expired
   throw_if(34, expires_at <= now());
@@ -64,12 +65,13 @@ int udict_has?(cell dict, int key_len, int index) asm(index dict key_len) "DICTU
   ;; We will need the hash anyway
   int hash = slice_hash(in_msg);
   
-  ;; storage$_ seqno:uint32 minSigs:(## 4) keys:[ ^PubKeys ] messages:(HashmapE 256 (StoredMessage X)) = Storage X;
+  ;; storage$_ seqno:uint32 minSigs:(## 4) keys:(HashmapE 4 PubKey) messages:(HashmapE 256 (MultiSigWrapperStorage X)) = Storage X;
   slice stored_data = get_data().begin_parse();
   (int stored_seqno, int min_sigs, var keys, var messages) = (stored_data~load_uint(32), stored_data~load_uint(4), stored_data~load_dict(), stored_data~load_dict());
   stored_data.end_parse();
 
-  ;; This is a new message, so there will be no stored messages
+  ;; This is a new message, so there will be no stored message
+  var storedSignatureCount = 0;
   var storedMessageSignatures = new_dict();
   ;; If new message, check and increase seqno
   if (stored_seqno == msg_seqno) {
@@ -77,22 +79,22 @@ int udict_has?(cell dict, int key_len, int index) asm(index dict key_len) "DICTU
     
   ;; If old message, seqno WILL be different, check if exists in unsigned messages dict
   } else {
-    var (storedMessage, ok) = messages.udict_get?(256, hash);
+    (in_msg, int ok) = messages.udict_get?(256, hash);
     ;; Throw if old message and doesn't exist in db
     throw_unless(35, ok);
 
-    ;; multiSigWrapperStorage$_ signatures:(HashmapE 4 ^Signature) message:(WrappedMessage X) = MultiSigWrapperStorage X;
+    ;; multiSigWrapperStorage$_ count:(## 4) signatures:(HashmapE 4 Signature) message:(WrappedMessage X) = MultiSigWrapperStorage X;
     ;;
     ;; Load signatures
-    var storedMessageSignatures = storedMessage.preload_dict();
+    storedSignatureCount = in_msg~load_uint(4);
+    var storedMessageSignatures = in_msg.preload_dict();
   }
 
   accept_message();
-  message_data~touch();
 
-  int idx = 0;
+  int idx = -1;
   do {
-    (idx, var signature, int ok) = signatures.udict_get_next?(4, idx);
+    (idx, slice signature, int ok) = signatures.udict_get_next?(4, idx);
     if (ok) {
       (var public_key, ok) = keys.udict_get?(4, idx);
       throw_unless(36, ok);
@@ -101,38 +103,29 @@ int udict_has?(cell dict, int key_len, int index) asm(index dict key_len) "DICTU
 
       throw_unless(37, check_signature(hash, slice_copy, public_key.preload_uint(256)));
 
-      storedMessageSignatures~udict_set_ref(4, idx, begin_cell().store_slice(signature).end_cell());
+      if (~ storedMessageSignatures.udict_has?(4, idx)) {
+        storedMessageSignatures~udict_set(4, idx, signature);
+        storedSignatureCount += 1;
+      }
     }
   } until (~ ok);
   
   var (mode, message) = (message_data~load_uint(8), message_data~load_ref());
   message_data.end_parse();
 
-  int count = 0;
-  int sent = 0;
-  int idx = 0;
-  do {
-    (idx, var signature, int ok) = storedMessageSignatures.udict_get_next?(4, idx);
-    if (ok) {
-      count += 1;
-      if (count >= min_sigs) {
-        send_raw_message(message, mode);
-        messages~udict_delete?(256, hash);
-        ok = 0;
-      }
-    }
-  } until (~ ok);
-  
-  ;; modeMessage$_ mode:uint8 body:^(Message X) = ModeMessage X;
-  ;; wrappedMessage$_ expires_at:uint32 seqno:uint32 body:(ModeMessage X) = WrappedMessage X;
-  ;; multiSigWrapperStorage$_ signatures:(HashmapE 4 Signature) message:(WrappedMessage X) = MultiSigWrapperStorage X;
-  ;;
-  if (count < min_sigs) {
-    messages~udict_set_ref(256, hash, begin_cell().store_dict(storedMessageSignatures).store_uint(expires_at, 32).store_uint(msg_seqno, 32).store_uint(mode, 8).store_ref(message).end_cell());
+  if (storedSignatureCount >= min_sigs) {
+    send_raw_message(message, mode);
+    messages~udict_delete?(256, hash);
+  } else {
+    ;; modeMessage$_ mode:uint8 body:^(Message X) = ModeMessage X;
+    ;; wrappedMessage$_ expires_at:uint32 seqno:uint32 body:(ModeMessage X) = WrappedMessage X;
+    ;; multiSigWrapperStorage$_ count:(## 4) signatures:(HashmapE 4 Signature) message:(WrappedMessage X) = MultiSigWrapperStorage X;
+    ;;
+    messages~udict_set_builder(256, hash, begin_cell().store_uint(4, storedSignatureCount).store_dict(storedMessageSignatures).store_slice(in_msg));
   }
   messages~collect_garbage();
 
-  ;; storage$_ seqno:uint32 minSigs:(## 4) keys:[ ^PubKeys ] messages:(HashmapE 256 (Message X)) = Storage X;
+  ;; storage$_ seqno:uint32 minSigs:(## 4) keys:(HashmapE 4 PubKey) messages:(HashmapE 256 (MultiSigWrapperStorage X)) = Storage X;
   set_data(begin_cell().store_uint(stored_seqno + 1, 32).store_uint(min_sigs, 4).store_dict(keys).store_dict(messages).end_cell());
 }
 
@@ -143,14 +136,14 @@ int seqno() method_id {
 }
 
 (int, int) getKey(int id) method_id {
-  (var res, int ok) = get_data().begin_parse().skip_bits(36).preload_dict().udict_get?(4, id);
+  (var res, int ok) = get_data().begin_parse().skip_bits(40).preload_dict().udict_get?(4, id);
   if (~ ok) {
     return (ok, 0);
   }
   return (-1, res.preload_uint(256));
 }
 (int, int) getId(int key) method_id {
-  var keys = get_data().begin_parse().skip_bits(36).preload_dict();
+  var keys = get_data().begin_parse().skip_bits(40).preload_dict();
   int idx = 0;
   int ok = 0;
   do {
@@ -163,10 +156,10 @@ int seqno() method_id {
 }
 
 (cell) getPartials() method_id {
-  return get_data().begin_parse().skip_bits(36).skip_dict().preload_dict();
+  return get_data().begin_parse().skip_bits(40).skip_dict().preload_dict();
 }
 (cell) getPartialsById(int id) method_id {
-  cell messages = get_data().begin_parse().skip_bits(36).skip_dict().preload_dict();
+  cell messages = get_data().begin_parse().skip_bits(40).skip_dict().preload_dict();
   cell messages_found = new_dict();
 
   int idx = 0;
@@ -183,13 +176,13 @@ int seqno() method_id {
   return messages_found;
 }
 
-(cell) getPartialsByKey(int key) method_id {
+(cell) getPartialByKey(int key) method_id {
   (int ok, int id) = getId(key);
   ifnot (ok) {
     return new_dict();
   }
   return getPartialsById(id);
 }
-(cell) getPartialsByHash(int hash) method_id {
-  return get_data().begin_parse().skip_bits(36).skip_dict().preload_dict().udict_get_ref(256, hash);
+(cell) getPartialByHash(int hash) method_id {
+  return get_data().begin_parse().skip_bits(40).skip_dict().preload_dict().udict_get_ref(256, hash);
 }

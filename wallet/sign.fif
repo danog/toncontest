@@ -16,7 +16,7 @@ $4 parse-int =: key-id
 input-file +".boc" load-boc constant order
 key +".pk" load-keypair nip constant wallet_pk
 
-order "inspect-lib.fif" include cr 
+order inspect cr 
 
 // multiSigWrapper$0 signatures:(HashmapE 4 Signature) message:(WrappedMessage X) = MultiSigWrapper X;
 message-contents
@@ -43,7 +43,7 @@ key-id swap 4 udict! not abort"Failure adding signature!"
 <b 0 1 u, swap dict, swap <s s, b>
 
 // Renerate external message
-<b 68 7 u, wallet-addr addr, 0 Gram, 0 1 u, swap append-msg-body b>
+<b 68 7 u, wallet-addr addr, 0 Gram, 0 1 u, swap maybe-ref, b>
 
 2 boc+>B dup Bx. cr
 output-file +".boc" tuck B>file

@@ -43,44 +43,52 @@ cr
 // on success. Otherwise the unchanged dictionary s and 0 are returned.
 
 // Create dictionaries with keys and messages
-dictnew
-0 { dup 1+ swap  // Create a counter
-  dup keys swap [] // Get n-th value v
-  <b swap 256 u,   // ~
-  swap             // Get x
-  3 roll           // Get dictionary s
-  4                // Get n
+// Extract keys
+keys explode
+
+dictnew 0      // Create counter and dict
+rot            // Put length on top for times
+{ dup 1+ swap  // Increment counter
+  3 roll           // Get n-th value v (val dict ncount curcount)
+  <b swap 256 u,   // Create builder bval
+  swap             // Get x            (dict ncount curcount bval)
+  3 roll           // Get dictionary s (dict ncount bval curcount)
+  4                // Get n            (ncount bval curcount dict) 4
   b>udict!
   not abort"Failure storing dictionary value!"
 
   swap
-} n times drop const keys-dict
+} swap times drop const keys-dict
 
 // Extract internal messages
-messages explode { } swap times
+messages explode
 
-dictnew
-0 { dup 1+ swap  // Create a counter
-  messages swap [] // Get n-th value v
-  dup <s           // ~
-  swap hashu       // Get x
-  3 roll           // Get dictionary s
+dictnew swap
+{
+  swap             // Get n-th value
+  inspect
+  message-contents // Get v
+  1 u@+ nip        // Remove $0
+  dict@+ swap      // ...get signatures
+  dup dictlen      // ...and signature count
+  <b swap 4 u, swap dict, swap s, // Finally rebuild cell
+
+  message-hash     // Get x
+  rot              // Get dictionary s
   256              // Get n
-  udict!
+  b>udict!
   not abort"Failure storing dictionary value!"
 
   swap
-} m times drop const messages-dict
+} swap times const messages-dict
 
 // code
 "wallet-code.fif" include
 // data
-// storage$_ seqno:uint32 minSigs:(## 4) n:(## 4) keys:[ ^PubKeys ] messages:(HashmapE 256 (MultiSigWrapperStorage X)) 
+// storage$_ seqno:uint32 minSigs:(## 4) keys:(HashmapE 4 PubKey) messages:(HashmapE 256 (MultiSigWrapperStorage X)) 
 //           { minSigs > 0 } { n >= minSigs } { n <= 10 } { minSigs <= 10 } = Storage X;
 <b 0 32 u, 
    k 4 u, 
-   // nCells 4 u,
-   // keyCells explode roll { swap ref, } nCells times
    keys-dict dict,
    messages-dict dict, 
 b>
@@ -103,14 +111,16 @@ dup hash wc swap 2dup 2constant wallet-addr
 
 <b 0 32 u, -1 32 i, b>
 dup ."signing message: " <s csr. cr
-dup hash privkey ed25519_sign_uint rot
+dup hash privkey ed25519_sign_uint
 
+// Put StateInit on top
+rot
 
 // message$_ {X:Type} info:CommonMsgInfo
-//   init:(Maybe (Either StateInit ^StateInit))
-//   body:(Either X ^X) = Message X;
+//                 init:(Maybe (Either StateInit ^StateInit))
+//                                                             body:(Either X ^X) = Message X;
 
-<b b{1000100} s, wallet-addr addr, b{000010} s, swap <s s, b{0} s, swap B, swap <s s, b>
+<b b{1000100} s, wallet-addr addr, b{00001} s, swap maybe-ref, b{0} s, swap B, swap <s s, b>
 dup ."External message for initialization is " <s csr. cr
 2 boc+>B dup Bx. cr
 file-base +"-create.boc" tuck B>file

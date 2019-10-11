@@ -15,8 +15,9 @@ PROGRAM{
   ~collect_garbage PROC:<{
     -1 PUSHINT
     UNTIL:<{
-      OVER
       8 PUSHPOW2
+      s2 PUSH
+      SWAP
       DICTUGETNEXT
       NULLSWAPIFNOT
       NULLSWAPIFNOT
@@ -29,14 +30,17 @@ PROGRAM{
         LEQ
         IF:<{
           8 PUSHPOW2
-          s1 s3 s3 PUXC2
+          OVER
+          s1 s4 XCHG
+          s0 s4 XCHG
           DICTUDEL
           DROP
         }>ELSE<{
           s0 s2 XCHG
         }>
       }>ELSE<{
-        2SWAP
+        s1 s3 XCHG
+        s0 s2 XCHG
         DROP
       }>
       SWAP
@@ -82,8 +86,9 @@ PROGRAM{
     LDDICT
     ENDS
     0 PUSHINT
-    s4 PUSH
     NEWDICT
+    s5 PUSH
+    SWAP
     s0 s8 XCHG
     EQUAL
     IF:<{
@@ -92,58 +97,80 @@ PROGRAM{
     }>ELSE<{
       DROP
       s7 POP
-      s3 s6 PUSH2
       8 PUSHPOW2
+      s4 PUSH
+      SWAP
+      s8 PUSH
+      SWAP
       DICTUGET
       NULLSWAPIFNOT
       35 THROWIFNOT
       4 LDU
-      s4 s8 XCHG2
+      s0 s8 XCHG
+      s1 s4 XCHG
       SWAP
     }>
     ACCEPT
-    -1 PUSHINT
+    s0 s7 XCHG
+    0 PUSHINT
     UNTIL:<{
-      s10 PUSH
       4 PUSHINT
+      s11 PUSH
+      SWAP
       DICTUGETNEXT
       NULLSWAPIFNOT
       NULLSWAPIFNOT
       DUP
       IF:<{
         DROP
-        s0 s4 PUSH2
         4 PUSHINT
+        OVER
+        SWAP
+        s6 PUSH
+        SWAP
         DICTUGET
         NULLSWAPIFNOT
         DUP
         36 THROWIFNOT
-        s3 s(-1) s0 PUXC2
+        s3 PUSH
+        s0 s2 XCHG
         256 PLDU
-        s10 s2 s2 PUXC2
+        s10 PUSH
+        s0 s2 XCHG
+        s1 s3 XCHG
+        s0 s3 XCHG
         CHKSIGNU
         37 THROWIFNOT
-        s1 s9 PUSH2
         4 PUSHINT
+        s2 PUSH
+        SWAP
+        s11 PUSH
+        SWAP
         DICTUGET
-        NULLSWAPIFNOT
         NIP
         NOT
         IF:<{
-          s1 s2 XCHG
           4 PUSHINT
-          s3 s10 s10 PUXC2
+          s2 s3 XCHG
+          s3 PUSH
+          s0 s2 XCHG
+          s1 s11 XCHG
+          s0 s11 XCHG
           DICTUSET
           s0 s6 XCHG
           INC
         }>ELSE<{
           s0 s9 XCHG
-          s1 s7 s7 XCHG3
+          s0 s7 XCHG
+          s1 s2 XCHG
+          SWAP
           DROP
         }>
       }>ELSE<{
         s0 s9 XCHG
-        s1 s7 s7 XCHG3
+        s0 s7 XCHG
+        s1 s2 XCHG
+        SWAP
         DROP
       }>
       s0 s8 XCHG
@@ -152,11 +179,12 @@ PROGRAM{
     }>
     DROP
     s9 POP
-    s0 s6 XCHG
+    s0 s8 XCHG
     8 LDU
     LDREF
     ENDS
-    s4 s3 PUSH2
+    s4 PUSH
+    s4 PUSH
     GEQ
     IF:<{
       s4 POP
@@ -164,29 +192,36 @@ PROGRAM{
       s6 POP
       s0 s3 XCHG
       SENDRAWMSG
-      ROT
       8 PUSHPOW2
+      s1 s2 XCHG
+      s1 s5 XCHG
       DICTUDEL
       DROP
     }>ELSE<{
-      2DROP
+      DROP
+      DROP
       4 PUSHINT
       NEWC
-      s1 s0 s4 XCHG3
+      s1 s2 XCHG
+      SWAP
+      s0 s4 XCHG
       STUX
       s1 s4 XCHG
       STDICT
-      s0 s5 XCHG2
+      SWAP
+      s0 s5 XCHG
       STSLICER
-      s0 s1 s3 XCHG3
       8 PUSHPOW2
+      s1 s3 XCHG
+      s1 s6 XCHG
       DICTUSETB
     }>
     ~collect_garbage CALLDICT
-    s0 s3 XCHG
+    SWAP
     INC
     NEWC
     32 STU
+    s1 s3 XCHG
     4 STU
     STDICT
     STDICT
@@ -228,8 +263,9 @@ PROGRAM{
     DUP
     UNTIL:<{
       DROP
-      OVER
       4 PUSHINT
+      s2 PUSH
+      SWAP
       DICTUGETNEXT
       NULLSWAPIFNOT
       NULLSWAPIFNOT
@@ -271,8 +307,9 @@ PROGRAM{
     NEWDICT
     0 PUSHINT
     UNTIL:<{
-      s2 PUSH
       8 PUSHPOW2
+      s3 PUSH
+      SWAP
       DICTUGETNEXT
       NULLSWAPIFNOT
       NULLSWAPIFNOT
@@ -283,30 +320,35 @@ PROGRAM{
         DUP
         CTOS
         PLDDICT
-        s6 s(-1) PUXC
         4 PUSHINT
+        s7 PUSH
+        s0 s2 XCHG
+        SWAP
         DICTUGET
-        NULLSWAPIFNOT
         NIP
         IF:<{
-          SWAP
           8 PUSHPOW2
-          s1 s4 s4 PUXC2
+          s1 s2 XCHG
+          OVER
+          s1 s5 XCHG
+          s0 s5 XCHG
           DICTUSETREF
         }>ELSE<{
           s1 s3 XCHG
           DROP
         }>
       }>ELSE<{
-        2SWAP
+        s1 s3 XCHG
+        s0 s2 XCHG
         DROP
       }>
       SWAP
       NOT
       s1 s2 XCHG
     }>
-    s1 s3 XCHG
-    3 BLKDROP
+    DROP
+    NIP
+    NIP
   }>
   getPartialByKey PROC:<{
     getId CALLDICT
