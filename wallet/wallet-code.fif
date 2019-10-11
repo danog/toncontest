@@ -23,6 +23,8 @@ PROGRAM{
       DUP
       IF:<{
         s0 s2 XCHG
+        4 PUSHINT
+        SDSKIPFIRST
         SKIPDICT
         32 PLDU
         NOW
@@ -118,10 +120,9 @@ PROGRAM{
         NULLSWAPIFNOT
         DUP
         36 THROWIFNOT
-        SWAP
+        s3 s(-1) s0 PUXC2
         256 PLDU
-        s9 s3 s(-2) PU2XC
-        DUMPSTK
+        s10 s2 s2 PUXC2
         CHKSIGNU
         37 THROWIFNOT
         s1 s9 PUSH2
@@ -179,10 +180,9 @@ PROGRAM{
       DROP
     }>ELSE<{
       s6 POP
-      4 PUSHINT
       NEWC
-      s1 s0 s4 XCHG3
-      STUX
+      s1 s3 XCHG
+      4 STU
       s1 s4 XCHG
       STDICT
       s0 s5 XCHG2

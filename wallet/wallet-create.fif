@@ -29,7 +29,7 @@ n tuple constant keys
 
 
 cr
-."Creating new advanced wallet in workchain " wc .
+."Creating new multisignature wallet in workchain " wc .
 ."with n=" n .
 ."k=" k . ."..." cr cr
 

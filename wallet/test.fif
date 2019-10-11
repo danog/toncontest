@@ -64,6 +64,7 @@ message-boc inspect
 
 
 message-contents function code storage ctx runvmctx .s
+inspect-storage
 // rot
 // ."Signature: "
 // 64 B@ Bx.

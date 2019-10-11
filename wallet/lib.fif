@@ -179,3 +179,93 @@ variable-set sig-count sig-count!
     } cond
     drop
 } : inspect
+
+// storage$_ seqno:uint32 minSigs:(## 4) keys:(HashmapE 4 PubKey) messages:(HashmapE 256 (MultiSigWrapperStorage X)) = Storage X;
+// c --
+{
+  <s
+    .s
+    32 u@+ swap
+    ."Seqno: " . cr
+
+    4 u@+ swap
+    ."Minsigs: " . cr
+
+    dict@+ swap
+    ."Keys: " 4 dictlen . cr
+
+    dict@
+    ."Messages: " dup 256 dictlen . cr
+
+    256
+    {
+      cr ."Inspecting message " swap x. cr 
+
+      4 u@+ swap
+      ."Signature count: " dup . cr
+      sig-count!
+
+      dict@+ swap
+      ."Signed by the following keys: "
+      4 { drop . ."- " -1 } dictforeach cr drop
+
+      ."Hash: " dup s>c hashu dup x. cr
+      message-hash!
+
+      // modeMessage$0 mode:uint8 body:^(Message X) = ModeMessage X;
+      // wrappedMessage$_ expires_at:uint32 seqno:uint32 body:(ModeMessage X) = WrappedMessage X;
+
+      32 u@+ swap
+      dup ."Expires: " .
+      dup now < { ."(already EXPIRED!)" drop } { ."(in " now - . ."seconds)" } cond cr
+
+      32 u@+ swap
+      ."Seqno: " . cr
+
+      8 u@+ swap
+      ."Mode: " . cr
+
+      // Now on to the actual message we're agreeing to sign
+      //
+      //  int_msg_info$0 ihr_disabled:Bool bounce:Bool bounced:Bool
+      //    src:MsgAddressInt dest:MsgAddressInt 
+      //    value:CurrencyCollection ihr_fee:Grams fwd_fee:Grams
+      //    created_lt:uint64 created_at:uint32 = CommonMsgInfo;
+      //  ext_in_msg_info$10 src:MsgAddressExt dest:MsgAddressInt 
+      //     import_fee:Grams = CommonMsgInfo;
+      //  ext_out_msg_info$11 src:MsgAddressInt dest:MsgAddressExt
+      //    created_lt:uint64 created_at:uint32 = CommonMsgInfo;
+      ."=>" cr ref@ <s
+
+      1 u@+ swap
+      { // External message *$1*
+        ."Inside: external message" cr
+      }
+      { // Internal message int_msg_info$0
+        ."Inside: internal message" cr
+        1 u@+ swap
+        ."Instant hypercube routing disabled? " . cr
+
+        1 u@+ swap
+        ."Bounce flag set? " . cr
+
+        1 u@+ swap
+        // ."Bounced flag set? " . cr
+        drop
+
+        2 u@+ nip // Drop src address constructor + flags
+
+        3 u@+ swap // Read dst address constructor + flags
+        // addr_std$10 anycast 0 => 100 => 4
+        4 <> abort"Unsupported address!" // Make things simple for now
+
+        8 i@+
+        256 u@+ -rot
+        ."Destination address: " .addr cr
+
+        Gram@+ swap
+        ."Grams: " .GR cr
+      } cond
+      -1
+    } dictforeach 2drop
+} : inspect-storage

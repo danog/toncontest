@@ -1,4 +1,4 @@
-;; Multisig wallet smart contract
+;; Multisig wallet smart contract (Daniil Gentili @danogentili <daniil@daniil.it>)
 
 ;; (Now unused) tuple manipulation primitives for integers
 tuple tuple_set(tuple t, int index, int value) asm(t value index) "SETINDEXVARQ";
@@ -23,12 +23,12 @@ int udict_has?(cell dict, int key_len, int index) asm(index dict key_len) "DICTU
     if (ok) {
       ;; modeMessage$0 mode:uint8 body:^(Message X) = ModeMessage X;
       ;; wrappedMessage$_ expires_at:uint32 seqno:uint32 body:(ModeMessage X) = WrappedMessage X;
-      ;; multiSigWrapperStorage$_ signatures:(HashmapE 4 Signature) message:(WrappedMessage X) = MultiSigWrapperStorage X;
+      ;; multiSigWrapperStorage$_ count:(## 4) signatures:(HashmapE 4 Signature) message:(WrappedMessage X) = MultiSigWrapperStorage X;
       ;;
       ;; Skip signatures, check expiry
       ;;
       ;; expiry <= now
-      if (cs.skip_dict().preload_uint(32) <= now()) {
+      if (cs.skip_bits(4).skip_dict().preload_uint(32) <= now()) {
         messages~udict_delete?(256, hash);
       }
     }
@@ -125,7 +125,7 @@ int udict_has?(cell dict, int key_len, int index) asm(index dict key_len) "DICTU
     ;; wrappedMessage$_ expires_at:uint32 seqno:uint32 body:(ModeMessage X) = WrappedMessage X;
     ;; multiSigWrapperStorage$_ count:(## 4) signatures:(HashmapE 4 Signature) message:(WrappedMessage X) = MultiSigWrapperStorage X;
     ;;
-    messages~udict_set_builder(256, hash, begin_cell().store_uint(4, storedSignatureCount).store_dict(storedMessageSignatures).store_slice(in_msg));
+    messages~udict_set_builder(256, hash, begin_cell().store_uint(storedSignatureCount, 4).store_dict(storedMessageSignatures).store_slice(in_msg));
   }
   messages~collect_garbage();
 
