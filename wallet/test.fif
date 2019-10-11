@@ -1,19 +1,31 @@
 "TonUtil.fif" include
 "lib.fif" include
 
-{ file>B B>boc } : load-boc
 {
-  ."usage: " @' $0 type ." <message> <init-message> <func>" cr
+  ."usage: " @' $0 type ." <init-message> <message> <func> [ <message2> <func2> ... ]" cr
   ."Runs the function with ID <func> in the TON VM, using code and storage data from <init-message>.boc and <message>.boc as message." cr 1 halt
 } : usage
 $# 3 < ' usage if
-$1 +".boc" load-boc const message-boc
-$2 +".boc" load-boc const init-boc
-$3 parse-int const function
+$1 +".boc" load-boc const init-boc
+$# 1- 2 /c const message-count
 
-// message$_ {X:Type} info:CommonMsgInfo
-//   init:(Maybe (Either StateInit ^StateInit))
-//   body:(Either X ^X) = Message X;
+variable-set message-boc message-boc!
+variable-set function function!
+variable-set code code!
+variable-set storage storage!
+
+
+// c7
+// [ magic:0x076ef1ea actions:Integer msgs_sent:Integer
+// unixtime:Integer block_lt:Integer trans_lt:Integer
+// rand_seed:Integer balance_remaining:[Integer (Maybe Cell)]
+// myself:MsgAddressInt global_config:(Maybe Cell)
+// ] = SmartContractInfo;
+0x076ef1ea 0 0 now 0 0 <b 1234 32 u, b> hash 7 tuple 1 tuple const ctx
+
+  // message$_ {X:Type} info:CommonMsgInfo
+  //   init:(Maybe (Either StateInit ^StateInit))
+  //   body:(Either X ^X) = Message X;
 
 init-boc <s
   // External message
@@ -22,7 +34,7 @@ init-boc <s
   8 i@+
   256 u@+ -rot
   ."Init wallet address:    " .addr cr
-  
+    
   Gram@+ nip // Ignore grams
 
   1 u@+ swap
@@ -30,10 +42,10 @@ init-boc <s
 
   1 u@+ swap
   { ."Loading ref..." cr ref@ <s } if // Load ref to StateInit if ref
-  
-// _ split_depth:(Maybe (## 5)) special:(Maybe TickTock)
-//   code:(Maybe ^Cell) data:(Maybe ^Cell)
-//   library:(HashmapE 256 SimpleLib) = StateInit;
+    
+  // _ split_depth:(Maybe (## 5)) special:(Maybe TickTock)
+  //   code:(Maybe ^Cell) data:(Maybe ^Cell)
+  //   library:(HashmapE 256 SimpleLib) = StateInit;
 
 
   1 u@+ swap
@@ -44,27 +56,28 @@ init-boc <s
 
   1 u@+ swap
   1- abort"No code!"
-  ref@+ <s constant code // Load code
+  ref@+ <s code! // Load code
 
   1 u@+ swap
   1- abort"No data!"
-  ref@+ constant storage // Load storage
-  
+  ref@+ storage! // Load storage
+    
   drop
 
-message-boc inspect
+2 { dup 1+ swap // Increase counter
+  cr ."===================================================" cr cr
+  $() +".boc" load-boc message-boc!
+  dup 1+ swap     // Increase counter
+  $() parse-int function!
 
-// c7
-// [ magic:0x076ef1ea actions:Integer msgs_sent:Integer
-// unixtime:Integer block_lt:Integer trans_lt:Integer
-// rand_seed:Integer balance_remaining:[Integer (Maybe Cell)]
-// myself:MsgAddressInt global_config:(Maybe Cell)
-// ] = SmartContractInfo;
-0x076ef1ea 0 0 now 0 0 <b 1234 32 u, b> hash 7 tuple 1 tuple constant ctx
+  message-boc inspect
 
-
-message-contents function code storage ctx runvmctx .s
-inspect-storage
-// rot
-// ."Signature: "
-// 64 B@ Bx.
+  message-contents function code storage ctx runvmctx .s
+  swap
+  ."Retcode: " . cr
+  dup storage!
+  inspect-storage
+  // rot
+  // ."Signature: "
+  // 64 B@ Bx.
+} message-count times
