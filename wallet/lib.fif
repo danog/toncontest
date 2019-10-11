@@ -114,7 +114,7 @@ variable-set sig-count sig-count!
     dup 4 dictlen sig-count!
 
     ."Signed by the following keys: "
-    4 { 64 B@ Bx. . ."- " -1 } dictforeach cr drop
+    4 { drop . ."- " -1 } dictforeach cr drop
 
     ."Hash: " dup s>c hashu dup x. cr
     message-hash!
