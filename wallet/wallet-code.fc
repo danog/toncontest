@@ -21,7 +21,7 @@ int udict_has?(cell dict, int key_len, int index) asm(index dict key_len) "DICTU
   do {
     (hash, var cs, int ok) = messages.udict_get_next?(256, hash);
     if (ok) {
-      ;; modeMessage$_ mode:uint8 body:^(Message X) = ModeMessage X;
+      ;; modeMessage$0 mode:uint8 body:^(Message X) = ModeMessage X;
       ;; wrappedMessage$_ expires_at:uint32 seqno:uint32 body:(ModeMessage X) = WrappedMessage X;
       ;; multiSigWrapperStorage$_ signatures:(HashmapE 4 Signature) message:(WrappedMessage X) = MultiSigWrapperStorage X;
       ;;
@@ -110,14 +110,19 @@ int udict_has?(cell dict, int key_len, int index) asm(index dict key_len) "DICTU
     }
   } until (~ ok);
   
-  var (mode, message) = (message_data~load_uint(8), message_data~load_ref());
-  message_data.end_parse();
-
   if (storedSignatureCount >= min_sigs) {
-    send_raw_message(message, mode);
+    if (message_data~load_uint(1)) {
+      ;; Code upgrade
+      set_code(message_data~load_ref());
+    } else {
+      ;; Simple message
+      var (mode, message) = (message_data~load_uint(8), message_data~load_ref());
+      send_raw_message(message, mode);
+    }
+    message_data.end_parse();
     messages~udict_delete?(256, hash);
   } else {
-    ;; modeMessage$_ mode:uint8 body:^(Message X) = ModeMessage X;
+    ;; modeMessage$0 mode:uint8 body:^(Message X) = ModeMessage X;
     ;; wrappedMessage$_ expires_at:uint32 seqno:uint32 body:(ModeMessage X) = WrappedMessage X;
     ;; multiSigWrapperStorage$_ count:(## 4) signatures:(HashmapE 4 Signature) message:(WrappedMessage X) = MultiSigWrapperStorage X;
     ;;

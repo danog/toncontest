@@ -8,7 +8,9 @@ pubKey$_ k:bits256 = PubKey;
 signature$_ R:bits256 s:bits256 = Signature;
 
 // Message + send ModeMessage
-modeMessage$_ mode:uint8 body:^(Message X) = ModeMessage X;
+modeMessage$0 mode:uint8 body:^(Message X) = ModeMessage X;
+// Special code upgrade message
+codeMessage$1 code:^Cell = ModeMessage X;
 
 // Actual multisigned message
 wrappedMessage$_ expires_at:uint32 seqno:uint32 body:(ModeMessage X) = WrappedMessage X;

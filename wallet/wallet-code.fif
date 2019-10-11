@@ -152,24 +152,32 @@ PROGRAM{
     }>
     DROP
     s9 POP
-    s0 s6 XCHG
-    8 LDU
-    LDREF
-    ENDS
-    s4 s3 PUSH2
+    2OVER
     GEQ
     IF:<{
+      s3 POP
       s4 POP
       s5 POP
-      s6 POP
       s0 s3 XCHG
-      SENDRAWMSG
+      1 LDU
+      SWAP
+      IF:<{
+        LDREF
+        SWAP
+        SETCODE
+      }>ELSE<{
+        8 LDU
+        LDREF
+        s0 s2 XCHG
+        SENDRAWMSG
+      }>
+      ENDS
       ROT
       8 PUSHPOW2
       DICTUDEL
       DROP
     }>ELSE<{
-      2DROP
+      s6 POP
       4 PUSHINT
       NEWC
       s1 s0 s4 XCHG3
@@ -181,12 +189,14 @@ PROGRAM{
       s0 s1 s3 XCHG3
       8 PUSHPOW2
       DICTUSETB
+      s1 s2 XCHG
     }>
     ~collect_garbage CALLDICT
     s0 s3 XCHG
     INC
     NEWC
     32 STU
+    s1 s2 XCHG
     4 STU
     STDICT
     STDICT

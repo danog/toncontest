@@ -1,7 +1,7 @@
 "TonUtil.fif" include
 "lib.fif" include
 
-{ ."usage: " @' $0 type ." <workchain-id> <wallet-name> <n> <k> <privkey1> [<pubkey2> ...] [<boc1> <boc2>]" cr cr
+{ ."usage: " @' $0 type ." <workchain-id> <wallet-name> <n> <k> <privkey1> [<pubkey2> ...]" cr cr
   ."Creates a new multisignature wallet in specified workchain composed of <n> (1-10) keys." cr
   ."The first of the keys must be a private key (pre-existing or not), used to generate the wallet; the rest MUST be public keys." cr
   ."Create or generate public key files from private keys using gen-pub.fif privkey" cr cr
@@ -15,7 +15,6 @@ $1 parse-workchain-id =: wc    // set workchain id from command line argument
 $2 constant file-base
 $3 (number) 1 <> abort"<n> must be a number!" constant n
 $4 (number) 1 <> abort"<k> must be a number!" constant k
-$# 4 n + - constant m
 
 n 1 < n 10 > or abort"<n> must be between 1 and 10"
 k 1 < k 10 > or abort"<k> must be between 1 and 10"
@@ -28,14 +27,11 @@ $5 +".pk" load-generate-keypair const privkey 256 B>u@
 6 { dup $() +".pubkey" load-pubkey swap 1+ } n 1- times drop
 n tuple constant keys
 
-5 n + { dup $() +".boc" load-boc swap 1+ } m times drop
-m tuple constant messages
 
 cr
 ."Creating new advanced wallet in workchain " wc .
 ."with n=" n .
-."k=" k .
-."m=" m . ."..." cr cr
+."k=" k . ."..." cr cr
 
 // idict! (v x s n – s0 −1 or s 0), adds a new value v (represented
 // by a Slice) with key given by signed big-endian n-bit integer x into
@@ -60,28 +56,6 @@ rot            // Put length on top for times
   swap
 } swap times drop const keys-dict
 
-// Extract internal messages
-messages explode
-
-dictnew swap
-{
-  swap             // Get n-th value
-  inspect
-  message-contents // Get v
-  1 u@+ nip        // Remove $0
-  dict@+ swap      // ...get signatures
-  dup dictlen      // ...and signature count
-  <b swap 4 u, swap dict, swap s, // Finally rebuild cell
-
-  message-hash     // Get x
-  rot              // Get dictionary s
-  256              // Get n
-  b>udict!
-  not abort"Failure storing dictionary value!"
-
-  swap
-} swap times const messages-dict
-
 // code
 "wallet-code.fif" include
 // data
@@ -90,7 +64,7 @@ dictnew swap
 <b 0 32 u, 
    k 4 u, 
    keys-dict dict,
-   messages-dict dict, 
+   dictnew dict, 
 b>
 // no libraries
 null

@@ -39,9 +39,9 @@ dest_addr 2dup bounce 7 + .Addr ." = " .addr
   body-cell <s 2dup s-fits? not rot over 1 i, -rot { drop body-cell ref, } { s, } cond
 b>
 // create wrapper message
-// modeMessage$_ mode:uint8 body:^(Message X) = ModeMessage X;
+// modeMessage$0 mode:uint8 body:^(Message X) = ModeMessage X;
 // wrappedMessage$_ expires_at:uint32 seqno:uint32 body:(ModeMessage X) = WrappedMessage X;
-<b now timeout + 32 u, seqno 32 u, send-mode 8 u, swap ref, b>
+<b now timeout + 32 u, seqno 32 u, 0 1 u, send-mode 8 u, swap ref, b>
 
 dup ."signing message: " <s csr. cr
 dup hashu
@@ -54,7 +54,14 @@ wallet_pk ed25519_sign_uint
 
 // key ID => signature
 // multiSigWrapper$0 signatures:(HashmapE 4 Signature) message:(WrappedMessage X) = MultiSigWrapper X;
-<b swap <s key-id dictnew 4 udict! not abort"Failure inserting signature!" dict, swap <s s, b>
+<b
+  0 1 u,     // $0
+  swap <s key-id dictnew 4 udict! // Create and populate dictionary
+  not abort"Failure inserting signature!"
+  
+  dict,      // signatures
+  swap <s s, // message
+b>
 
 //
 // addr_none$00 = MsgAddressExt;

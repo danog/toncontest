@@ -21,16 +21,27 @@
 // D n -- uint
 {
   0 -rot
-  { drop swap 1+ swap -1 } dictmap
+  { drop swap 1+ swap -1 } dictmap drop
 } : dictlen
 
+// u D n -- s ? or ?
+{
+  { swap 2 pick = { nip 0 } { drop -1 } cond } dictforeach
+  dup ' nip if
+  not
+} : dict[]
 
 { hole dup 1 ' @ does create 1 ' ! does create } : variable-set
 { hole hole 2dup 2 { @ swap @ swap } does create 2 { rot swap ! ! } does create } : 2variable-set
 2variable-set wallet-addr wallet-addr!
 variable-set message-hash message-hash!
 variable-set message-contents message-contents!
+variable-set sig-count sig-count!
 
+// udata BSig ukey – ?
+{
+  256 u>B rot 256 u>B -rot ed25519_chksign
+} : ed25519_chksignuu
 
 // Inspects contents of cell provided on top of the stack
 // c -- 
@@ -99,6 +110,7 @@ variable-set message-contents message-contents!
 
     dict@+ swap
     dup null? abort"Empty signature list!"
+    dup 4 dictlen sig-count!
 
     ."Signed by the following keys: "
     4 { drop . ."- " -1 } dictforeach cr drop
@@ -106,7 +118,7 @@ variable-set message-contents message-contents!
     ."Hash: " dup s>c hashu dup x. cr
     message-hash!
 
-    // modeMessage$_ mode:uint8 body:^(Message X) = ModeMessage X;
+    // modeMessage$0 mode:uint8 body:^(Message X) = ModeMessage X;
     // wrappedMessage$_ expires_at:uint32 seqno:uint32 body:(ModeMessage X) = WrappedMessage X;
 
     32 u@+ swap
@@ -115,6 +127,9 @@ variable-set message-contents message-contents!
 
     32 u@+ swap
     ."Seqno: " . cr
+
+    1 u@+ swap
+    { ."Is code message!" cr ref@ <s quit } if
 
     8 u@+ swap
     ."Mode: " . cr
