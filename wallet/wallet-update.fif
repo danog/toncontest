@@ -1,0 +1,128 @@
+"TonUtil.fif" include
+"lib.fif" include
+
+{ ."usage: " @' $0 type ." <wallet-name> <wallet-update> <seqno> <n> <k> <key-id> <privkey1> [<pubkey2> ...]" cr cr
+  ."Updates an existing multisignature wallet." cr
+  ."The first of the keys must be a private key (with ID <key-id>), used to sign the wallet update request saved to <wallet-update>.boc; the rest MUST be public keys." cr
+  ."Create or generate public key files from private keys using gen-pub.fif privkey" cr cr
+  ."Min <k> (1-10) signatures required to send an order; load <n> pre-existing public keys from files <key1...n>." cr
+  1 halt
+} : usage
+$# 6 < ' usage if
+
+$1 constant file-base
+$2 constant update-file
+$3 parse-int constant msg-seqno
+$4 (number) 1 <> abort"<n> must be a number!" constant n
+$5 (number) 1 <> abort"<k> must be a number!" constant k
+$6 (number) 1 <> abort"<k> must be a number!" constant key-id
+
+
+file-base +".addr" load-address
+2dup 2constant wallet-addr
+."Source wallet address = " 2dup .addr cr 6 .Addr cr
+
+3 constant send-mode  // mode for SENDRAWMSG: +1 - sender pays fees, +2 - ignore errors
+3 86400 * constant timeout   // external message expires in 3 days
+
+n 1 < n 10 > or abort"<n> must be between 1 and 10"
+k 1 < k 10 > or abort"<k> must be between 1 and 10"
+k n <= not abort"<k> must smaller than or equal to <n>"
+
+$# 6 n + < abort"Not enough keys were provided in args!"
+
+$7 +".pk" load-generate-keypair const privkey 256 B>u@
+
+8 { dup $() +".pubkey" load-pubkey swap 1+ } n 1- times drop
+n tuple constant keys
+
+
+cr
+."Updating pre-existing multisignature wallet with n=" n .
+."k=" k . ."..." cr cr
+
+// idict! (v x s n – s0 −1 or s 0), adds a new value v (represented
+// by a Slice) with key given by signed big-endian n-bit integer x into
+// dictionary s with n-bit keys, and returns the new dictionary s0 and −1
+// on success. Otherwise the unchanged dictionary s and 0 are returned.
+
+// Create dictionaries with keys and messages
+// Extract keys
+keys explode
+
+dup 1-         // Create counter
+dictnew swap   // ...and dict (swap the two)
+rot            // Put length on top for times
+{ dup 1- swap  // Decrement counter
+  3 roll           // Get n-th value v (val dict ncount curcount)
+  <b swap 256 u,   // Create builder bval
+  swap             // Get x            (dict ncount curcount bval)
+  3 roll           // Get dictionary s (dict ncount bval curcount)
+  4                // Get n            (ncount bval curcount dict) 4
+  b>udict!
+  not abort"Failure storing dictionary value!"
+
+  swap
+} swap times drop const keys-dict
+
+// code
+"wallet-code-update.fif" include
+// Create code message
+// codeMessage$1 minSigs:(## 4) keys:(HashmapE 4 PubKey) code:^Cell = ModeMessage X;
+<b 1 1 u, 
+   k 4 u,
+   keys-dict dict,
+   swap ref, 
+b>
+// create wrapper message
+// wrappedMessage$_ expires_at:uint32 seqno:uint32 body:(ModeMessage X) = WrappedMessage X;
+<b now timeout + 32 u, msg-seqno 32 u, swap <s s, b>
+
+dup ."signing message: " <s csr. cr
+dup hashu
+dup ."Hash: " x. cr cr
+privkey ed25519_sign_uint
+
+// signature$_ R:bits256 s:bits256 = Signature;
+256 B>u@+ swap 256 B>u@ swap
+<b swap 256 u, swap 256 u, b>
+
+// key ID => signature
+// multiSigWrapper$0 signatures:(HashmapE 4 Signature) message:(WrappedMessage X) = MultiSigWrapper X;
+<b
+  0 1 u,     // $0
+  swap <s key-id dictnew 4 udict! // Create and populate dictionary
+  not abort"Failure inserting signature!"
+  
+  dict,      // signatures
+  swap <s s, // message
+b>
+
+
+//
+// addr_none$00 = MsgAddressExt;
+// addr_extern$01 len:(## 9) external_address:(bits len) 
+//              = MsgAddressExt;
+// anycast_info$_ depth:(#<= 30) { depth >= 1 }
+//    rewrite_pfx:(bits depth) = Anycast;
+// addr_std$10 anycast:(Maybe Anycast) 
+//    workchain_id:int8 address:bits256  = MsgAddressInt;
+// addr_var$11 anycast:(Maybe Anycast) addr_len:(## 9) 
+//    workchain_id:int32 address:(bits addr_len) = MsgAddressInt;
+//
+// ext_in_msg_info$10 src:MsgAddressExt dest:MsgAddressInt 
+//  import_fee:Grams = CommonMsgInfo;
+//
+//
+// message$_ {X:Type} info:CommonMsgInfo
+//   init:(Maybe (Either StateInit ^StateInit))
+//   body:(Either X ^X) = Message X;
+//
+<b b{1000100} s, wallet-addr addr, 0 Gram, 0 1 u,
+   swap maybe-ref, b>
+
+dup ."resulting external message: " <s csr. cr
+2 boc+>B dup Bx. cr
+update-file +".boc" tuck B>file
+."Query expires in " timeout . ."seconds" cr
+."(Saved to file " type .")" cr
