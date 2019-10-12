@@ -1,3 +1,6 @@
+// Some old code I wrote for serializing the smart contract key database in a more compact manner, hoping to save grams on storage
+// This was scrapped and substituted with a simple dictionary after my tests showed that the code was consuming three times the amount of gas of a simple load dictionary primitive.
+
 
 // Keys will be deserialized to a simple tuple, using the correct PubKeys constructor depending on the number n of keys left
 //

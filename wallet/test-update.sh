@@ -29,7 +29,7 @@ fift -s ../inspect.fif merge
 # Then load wallet code update (0)
 # Run seqno get-method
 # Run getPartialsByKeyId get-method
-# Load file with all signatures (and UPDATE CODE)
+# Load wallet code update with all signatures (and UPDATE CODE)
 # Run getPartialsByKeyId get-method
 # Finally load file with three signatures by keys a, b, c (0, 1, 2)
 #

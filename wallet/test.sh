@@ -19,6 +19,13 @@ rm log
 # Create a new wallet query signed with key a (ID 0), transferring 10 grams to the wallet itself
 fift -s ../create.fif pony a 0 $address 0 10 a
 
+# Here, note the `a 0`: to save space, I have chosen to not use the entire ecdh key as key in the signature dictionary.
+# Instead, a **key ID** is used to distinguish signatures made by certain keys: this is a simple 4-bit value (instead of 256 bits!), equal to the position of the key in the `wallet-create` argument list.
+# In this case, the `a` key was the first key (`{a..j}` in Bash is shorthand for `a b c .. j`), so the ID is `0`.
+# What follows is the address, the seqno, the amount of grams and the savefile (`a`) for the query.
+
+
+
 # Sign the query using all keys separately, creating eight more boc files, each signed by two keys only (0 and 1..9)
 for f in {1..9}; do fift -s ../sign.fif a $(chr $((97+f))) $(chr $((97+f))) $f;done
 
