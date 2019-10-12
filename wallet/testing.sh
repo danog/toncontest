@@ -14,6 +14,7 @@ fift -s ../wallet-create.fif 0 pony 10 10 {a..j} | tee log
 
 # Get wallet address
 address=$(sed '/Bounceable address [(]for later access[)]: /!d;s/.* //g' log)
+rm log
 
 # Create a new wallet query signed with key a (ID 0), transferring 10 grams to the wallet itself
 fift -s ../create.fif pony a 0 $address 0 10 a
