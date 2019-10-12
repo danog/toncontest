@@ -13,6 +13,13 @@ Fift scripts:
     Then, the custom `multiSigWrapper`, `wrappedMessage`, `modeMessage` and `codeMessage` TL-B objects are deserialized, with info printed to stdout.  
     In the case of `modeMessage` (simple message to be sent by wallet once enough signatures are gathered), a the internal Message X object is also unpacked, with info printed to stdout.  
     In the case of `codeMessage`, the new public key dictionary is unpacked an printed to stdout, along with a csr dump of the code slice and other info.  
+* `test.fif` - TVM testing platform
+    ```
+    usage: test.fif <init-message> <message> <func> [ <message2> <func2> ... ]
+    ```
+
+    Runs the function with ID <func> in the TON VM, using initial code and storage data from <init-message>.boc and <message>.boc as message (OR as the only integer parameter of get-method, if <message>.boc does not exist).
+    The TVM persistent storage is dumped to console and reused after each method call, allowing detailed debugging of smart contracts, with multiple method calls altering the contract's persistent storage.
 
 * `gen-pub.fif` - Generates public/private keypair
     ```
