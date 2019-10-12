@@ -30,7 +30,7 @@ dup ."signing message: " <s csr. cr
 dup hash wallet_pk ed25519_sign_uint
 
 256 B>u@+ swap 256 B>u@ swap
-<b swap B, 
+<b swap 256 u, swap 256 u, b> <s
 
 rot
 // Now we have (message) value dict

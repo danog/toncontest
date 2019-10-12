@@ -82,13 +82,16 @@ init-boc <s
   $() parse-int function!
 
   ."Calling " function . cr cr
- 
   message-contents function code storage ctx runvmctx .s
   swap
   ."Retcode: " . cr
   dup storage!
   inspect-storage
 
+  // Manually drop return values of functions
+  function -1 <> {
+    2drop
+  } if
   // rot
   // ."Signature: "
   // 64 B@ Bx.
