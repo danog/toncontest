@@ -12,6 +12,7 @@ $# 1- 2 /c const message-count
 variable-set function function!
 variable-set code code!
 variable-set storage storage!
+variable-set retcode retcode!
 
 
 // c7
@@ -83,15 +84,18 @@ init-boc <s
 
   ."Calling " function . cr cr
   message-contents function code storage ctx runvmctx .s
-  swap
-  ."Retcode: " . cr
+  swap retcode!
+  ."Retcode: " retcode . cr
   dup storage!
   inspect-storage
+
+  retcode 0 <> abort"Exception"
 
   // Manually drop return values of functions
   function -1 <> {
     2drop
   } if
+
   // rot
   // ."Signature: "
   // 64 B@ Bx.

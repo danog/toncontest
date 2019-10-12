@@ -112,9 +112,15 @@ int udict_has?(cell dict, int key_len, int index) asm(index dict key_len) "DICTU
   if (storedSignatureCount >= min_sigs) {
     if (message_copy~load_uint(1)) {
       ;; Code upgrade
+      ;; codeMessage$1 minSigs:(## 4) keys:(HashmapE 4 PubKey) code:^Cell = ModeMessage X;
+      ;;
+      min_sigs = message_copy~load_uint(4);
+      keys = message_copy~load_dict();
       set_code(message_copy~load_ref());
     } else {
       ;; Simple message
+      ;; modeMessage$0 mode:uint8 body:^(Message X) = ModeMessage X;
+      ;;
       var (mode, message) = (message_copy~load_uint(8), message_copy~load_ref());
       send_raw_message(message, mode);
     }

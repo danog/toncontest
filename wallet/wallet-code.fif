@@ -163,17 +163,23 @@ PROGRAM{
       1 LDU
       SWAP
       IF:<{
+        s2 POP
+        s2 POP
+        4 LDU
+        LDDICT
         LDREF
         SWAP
         SETCODE
+        DUMPSTK
       }>ELSE<{
         8 LDU
         LDREF
         s0 s2 XCHG
         SENDRAWMSG
+        s3 s3 s0 XCHG3
       }>
       ENDS
-      s0 s3 XCHG2
+      s2 s3 XCHG2
       8 PUSHPOW2
       DICTUDEL
       DROP

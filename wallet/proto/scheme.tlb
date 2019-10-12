@@ -10,7 +10,7 @@ signature$_ R:bits256 s:bits256 = Signature;
 // Message + send ModeMessage
 modeMessage$0 mode:uint8 body:^(Message X) = ModeMessage X;
 // Special code upgrade message
-codeMessage$1 code:^Cell = ModeMessage X;
+codeMessage$1 minSigs:(## 4) keys:(HashmapE 4 PubKey) code:^Cell = ModeMessage X;
 
 // Actual multisigned message
 wrappedMessage$_ expires_at:uint32 seqno:uint32 body:(ModeMessage X) = WrappedMessage X;

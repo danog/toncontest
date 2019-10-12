@@ -6,7 +6,6 @@
   ."The first of the keys must be a private key (pre-existing or not), used to generate the wallet; the rest MUST be public keys." cr
   ."Create or generate public key files from private keys using gen-pub.fif privkey" cr cr
   ."Min <k> (1-10) signatures required to send an order; load <n> pre-existing public keys from files <key1...n>." cr
-  ."Optionally load a number of pre-generated partially signed orders <boc1...m> to preload into the contract." cr cr
   1 halt
 } : usage
 $# 5 < ' usage if
@@ -56,7 +55,7 @@ rot            // Put length on top for times
 
   swap
 } swap times drop const keys-dict
-
+.s
 // code
 "wallet-code.fif" include
 // data
