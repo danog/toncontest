@@ -184,7 +184,6 @@ variable-set sig-count sig-count!
 // c --
 {
   <s
-    .s
     32 u@+ swap
     ."Seqno: " . cr
 
@@ -236,7 +235,6 @@ variable-set sig-count sig-count!
       //  ext_out_msg_info$11 src:MsgAddressInt dest:MsgAddressExt
       //    created_lt:uint64 created_at:uint32 = CommonMsgInfo;
       ."=>" cr ref@ <s
-
       1 u@+ swap
       { // External message *$1*
         ."Inside: external message" cr
@@ -266,6 +264,7 @@ variable-set sig-count sig-count!
         Gram@+ swap
         ."Grams: " .GR cr
       } cond
+      drop
       -1
-    } dictforeach 2drop
+    } dictforeach drop
 } : inspect-storage

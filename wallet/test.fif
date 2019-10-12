@@ -3,13 +3,12 @@
 
 {
   ."usage: " @' $0 type ." <init-message> <message> <func> [ <message2> <func2> ... ]" cr
-  ."Runs the function with ID <func> in the TON VM, using code and storage data from <init-message>.boc and <message>.boc as message." cr 1 halt
+  ."Runs the function with ID <func> in the TON VM, using code and storage data from <init-message>.boc and <message>.boc as message (OR as the only integer parameter of get-method, if <message>.boc does not exist)." cr 1 halt
 } : usage
 $# 3 < ' usage if
 $1 +".boc" load-boc const init-boc
 $# 1- 2 /c const message-count
 
-variable-set message-boc message-boc!
 variable-set function function!
 variable-set code code!
 variable-set storage storage!
@@ -23,9 +22,9 @@ variable-set storage storage!
 // ] = SmartContractInfo;
 0x076ef1ea 0 0 now 0 0 <b 1234 32 u, b> hash 7 tuple 1 tuple const ctx
 
-  // message$_ {X:Type} info:CommonMsgInfo
-  //   init:(Maybe (Either StateInit ^StateInit))
-  //   body:(Either X ^X) = Message X;
+// message$_ {X:Type} info:CommonMsgInfo
+//   init:(Maybe (Either StateInit ^StateInit))
+//   body:(Either X ^X) = Message X;
 
 init-boc <s
   // External message
@@ -66,17 +65,30 @@ init-boc <s
 
 2 { dup 1+ swap // Increase counter
   cr ."===================================================" cr cr
-  $() +".boc" load-boc message-boc!
+  $() +".boc"
+  dup file-exists? 
+  {
+    load-boc inspect
+  }
+  {
+    drop
+    dup 1- $() parse-int 
+    // <b swap 256 u, b>
+    message-contents!
+  } cond
+  
+ 
   dup 1+ swap     // Increase counter
   $() parse-int function!
 
-  message-boc inspect
-
+  ."Calling " function . cr cr
+ 
   message-contents function code storage ctx runvmctx .s
   swap
   ."Retcode: " . cr
   dup storage!
   inspect-storage
+
   // rot
   // ."Signature: "
   // 64 B@ Bx.
