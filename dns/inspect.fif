@@ -1,0 +1,9 @@
+{
+  ."usage: " @' $0 type ." <input>" cr
+  ."Inspects contents of multisig <input>.boc file." cr 1 halt
+} : usage
+$# 1 < ' usage if
+
+"lib.fif" include
+
+$1 +".boc" load-boc inspect

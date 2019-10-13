@@ -17,6 +17,7 @@ git pull origin master
 
 mkdir -p build
 cd build
+mkdir -p ton-db-dir
 [ ! -f CMakeCache.txt ] && {
     cmake ..
 }

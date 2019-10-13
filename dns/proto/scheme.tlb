@@ -15,22 +15,17 @@ codeMessage$1 minSigs:(## 4) keys:(HashmapE 4 PubKey) code:^Cell = ModeMessage X
 // Actual multisigned message
 wrappedMessage$_ expires_at:uint32 seqno:uint32 body:(ModeMessage X) = WrappedMessage X;
 
-// key ID => signature
-multiSigWrapper$0 signatures:(HashmapE 4 Signature) message:(WrappedMessage X) = MultiSigWrapper X;
-multiSigInit$10 = MultiSigWrapper X;
-//multiSigFuture$11 = MultiSigWrapper X;
+// -1, next resolver
+recordNS$_ resolver:MsgAddressInt = DNSRecord;
+// -2, owner information
+recordOwner$_ owner:MsgAddressInt = DNSRecord;
 
-// For internal storage, no constructor ID
-multiSigWrapperStorage$_ count:(## 4) signatures:(HashmapE 4 Signature) message:(WrappedMessage X) = MultiSigWrapperStorage X;
+// 16, arbitrary text data
+recordTXT$_ length:(## 8) data:string = DNSRecord;
 
+dnsRecordCollection$_ records:(HashmapE 16 ^DNSRecord) = DNSRecordCollection;
 
-// Not doing explicit versioning here, since the structure of the storage can only change after an update of the onchain wallet code
-// Max 10 keys (not sure about this, the contest instruction file says 10 in one place and 100 in another, so I chose 10 => 16 => 2^(4) )
-//
-// In this case, HashmapE n X types are used (instead of ^X), since values in hashmap are already stored as references (each fork has two references to further hashmasp)
-// ...and 32 + 4 + (~2+8+256 bits for messages assuming long label) + (~1+4+4 bits for keys assuming unary label), still less than 1023
-storage$_ seqno:uint32 minSigs:(## 4) keys:(HashmapE 4 PubKey) messages:(HashmapE 256 (MultiSigWrapperStorage X)) 
-          { minSigs > 0 } { n >= minSigs } { n <= 10 } { minSigs <= 10 } = Storage X;
+storage$_ seqno:uint32 domains:(PfxHashmapE 256 DNSRecordCollection) = Storage;
 
 // TON stuff
 

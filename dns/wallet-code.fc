@@ -47,15 +47,8 @@ int udict_has?(cell dict, int key_len, int index) asm(index dict key_len) "DICTU
 
 ;; multiSigWrapper$0 signatures:(HashmapE 4 Signature) message:(WrappedMessage X) = MultiSigWrapper X;
 () recv_external(slice message) impure {
-  ;; Check if multiSigWrapper$0, multiSigInit$10 or future unsupported protocol
-  int tag = message~load_uint(1);
-  if (tag) {
-    ;; Throw if multiSigFuture$11
-    throw_if(32, message~load_uint(1));
-
-    ;; Return if multiSigInit$10
-    return ();
-  }
+  ;; Check if multiSigWrapper$0 or future unsupported protocol
+  throw_if(32, message~load_uint(1));
 
   ;; Check if is hme_empty$0 or hme_root$1
   ;; Throw if empty signature list

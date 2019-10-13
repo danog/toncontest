@@ -61,34 +61,15 @@ init-boc <s
   1 u@+ swap
   1- abort"No data!"
   ref@+ storage! // Load storage
-  
-  1 u@+ nip // Skip libs
-
-  1 u@+ swap
-  { ."Loading body ref..." cr ref@ } if // Load ref to body if ref
-  message-contents! // Load init message
-  -1 function! // External message
-
-{
-  ."INIT: Calling " function . cr cr
-  message-contents function code storage ctx runvmctx .s
-  swap retcode!
-  ."Retcode: " retcode . cr
-  dup storage!
-  inspect-storage
-
-  retcode 0 <> abort"Exception"
-} : ponyvm
-
-cr ."===================================================" cr cr
-ponyvm
+    
+  drop
 
 2 { dup 1+ swap // Increase counter
   cr ."===================================================" cr cr
   $() +".boc"
   dup file-exists? 
   {
-    load-boc inspect // Automatically sets message-contents
+    load-boc inspect
   }
   {
     drop
@@ -101,7 +82,14 @@ ponyvm
   dup 1+ swap     // Increase counter
   $() parse-int function!
 
-  ponyvm
+  ."Calling " function . cr cr
+  message-contents function code storage ctx runvmctx .s
+  swap retcode!
+  ."Retcode: " retcode . cr
+  dup storage!
+  inspect-storage
+
+  retcode 0 <> abort"Exception"
 
   // Manually drop return values of functions
   function -1 <> {

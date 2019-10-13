@@ -1,0 +1,41 @@
+#!/usr/bin/env -S fift -s
+"TonUtil.fif" include
+"lib.fif" include
+
+{
+  ."usage: " @' $0 type ." <input> <key1> <key1-id> [<key2> <key2-id> ...]" cr
+  ."Verify multisig <input>.boc file with public key <keyN-id> loaded from file <keyN>.pubkey" cr 1 halt
+} : usage
+$# 3 < ' usage if
+$# 3 - 2 mod ' usage if
+
+$1 +".boc" load-boc constant order
+order inspect cr
+
+// multiSigWrapper$0 signatures:(HashmapE 4 Signature) message:(WrappedMessage X) = MultiSigWrapper X;
+message-contents
+  1 u@+ nip   // $0 was already verified
+
+  // multiSigWrapper$0 signatures:(HashmapE 4 Signature) message:(WrappedMessage X) = MultiSigWrapper X;
+  dict@ const signatures
+
+variable-set key key!
+variable-set key-id key-id!
+
+2 { dup 1+ swap // Counter
+  $() +".pubkey" load-pubkey key!
+  dup 1+ swap   // Increment counter
+  $() parse-int key-id!
+
+  ."Checking signature of key ID " key-id . ."... "
+  key-id signatures 4 dict[] // Find signature
+  not abort"Could not find signature with specified key ID!"
+
+  64 B@
+  // udata BSig ukey – ?
+  message-hash swap key
+
+  ed25519_chksignuu
+  not abort"Invalid signature!"
+  ."OK!" cr
+} $# 1- 2 /c times

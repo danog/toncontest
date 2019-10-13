@@ -1,5 +1,5 @@
 "Asm.fif" include
-// automatically generated from `/home/daniil/repos/contest/lib/crypto/smartcont/stdlib.fc` `./wallet-code.fc` 
+// automatically generated from `/home/daniil/repos/contest/lib/crypto/smartcont/stdlib.fc` `wallet-code.fc` 
 PROGRAM{
   DECLPROC ~collect_garbage
   DECLPROC store_db
@@ -62,11 +62,7 @@ PROGRAM{
   recv_external PROC:<{
     1 LDU
     SWAP
-    IFJMP:<{
-      1 LDU
-      DROP
-      32 THROWIF
-    }>
+    32 THROWIF
     DUP
     1 PLDU
     33 THROWIFNOT
