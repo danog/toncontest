@@ -13,6 +13,8 @@ for f in {a..j}; do fift -s ../gen-pub.fif $f;done
 fift -s ../wallet-create.fif 0 pony 10 10 {a..j} | tee log
 
 # Get wallet address
+sed '/Non-bounceable address [(]for init[)]: /!d;s/.* //g' log > naddr.addr
+
 address=$(sed '/Bounceable address [(]for later access[)]: /!d;s/.* //g' log)
 rm log
 

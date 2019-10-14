@@ -6,12 +6,11 @@ Upgradable multisignature wallet, with custom scripts to deserialize and inspect
 All custom data structures used in the wallet can be viewed as a custom TL-B scheme in `proto/scheme.tlb` (some basic TON constructors are also included for reference).  
 Most smart contact get-methods (except for the basic seqno and getPartials methods) return an integer, indicating whether the operation was successful and the requested data was found, followed by a cell/integer with the found data (or an empty cell/0 in case of failure).  
 
-I've been having some issues generating a TON zerostate in order to test my contract using `test-ton-collator`, which is why I have created a full testing platform with a collator emulator in FIFT that parses the generated external messages and runs the required logic (including code and data initialization from the StateInit of constructor messages, with support for multiple consecutive method calls and data persistence) in the TVM, fully emulating the logic of `Transaction::unpack_input_msg` and `Collator::create_ordinary_transaction`.  
+I created a full testing platform with a collator emulator in FIFT that parses the generated external messages and runs the required logic (including code and data initialization from the StateInit of constructor messages, with support for multiple consecutive method calls and data persistence) in the TVM, partially emulating the logic of `Transaction::unpack_input_msg` and `Collator::create_ordinary_transaction`.  
 
-I have rechecked the validity of generated BOC files against the TL-B schemes for blockchain messages, and everything seems to work in my offchain test suite, but my messages (at least the constructor messages) aren't accepted by the testnet: I've tried using the `test-ton-collator` program to simulate the workflow (and get logs!) of the collators that reject my messages, but I encountered problems with the creation of a zerostate for the blockchain collator, explained in detail in issue [#144](https://github.com/ton-blockchain/ton/issues/144).  
-I've tested throughly the smart contract using my local collator emulator (`test.fif`), but I couldn't get the actual TON collator to start due to missing documentation.  
+I've tested throughly the smart contract using my local collator emulator (`test.fif`), and the actual TON collator using a slightly tweaked [zerostate generator](https://github.com/ton-blockchain/ton/pull/145) and the custom `test-collator.sh` script.
 
-Anyway, I had loads of fun working with funC and especially fift, and I'm really looking forward to building stuff on TON; especially TON services on the P2P ADNL network, I'll start by adding support for the ADNL protocol in my MTProto client, [MadelineProto](https://github.com/danog/MadelineProto); but I'll also experiment more with the TON blockchain, creating s'more smart contracts.  
+I had loads of fun working with funC and especially fift, and I'm really looking forward to building stuff on TON; especially TON services on the P2P ADNL network, I'll start by adding support for the ADNL protocol in my MTProto client, [MadelineProto](https://github.com/danog/MadelineProto); but I'll also experiment more with the TON blockchain, creating s'more smart contracts.  
 
 ## Project structure
 
@@ -189,3 +188,15 @@ fift -s ../test.fif \
 
 If we were running on the blockchain, at this point the smart contract code root would be updated to point to the new code, allowing us to use the new `getMagic` (77784) method that returns (420, 69) when called.  
 Since we're running in a local TVM instance, and fift's `runvm` primitives have no way of returning the output action list (including changes to the code), the code isn't actually updated, but the modified signature list and minSig data structures in the persistent contract storage are indeed returned to the fift stack and re-used for the next TVM method call, allowing us to test the feature.
+
+
+## Collator testing
+
+After running `test.sh` and `test-update.sh` (thus generating all BOC files), you can run the `test-collator.sh` script, to:
+
+* Automatically configure a TON collator instance
+* Make a query to the testgiver on the local collator instance
+* Load the wallet smart contract
+* Load a query with 2 signatures (`a`, `b`)
+* Upgrade the smart contract to accept 3 signatures
+* Load one more signature and send the message
