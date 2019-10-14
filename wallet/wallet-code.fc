@@ -53,7 +53,14 @@ int udict_has?(cell dict, int key_len, int index) asm(index dict key_len) "DICTU
     ;; Throw if multiSigFuture$11
     throw_if(32, message~load_uint(1));
 
-    ;; Return if multiSigInit$10
+    ;; Accept if multiSigInit$10
+    accept_message();
+
+    slice stored_data = get_data().begin_parse();
+    (int stored_seqno, int min_sigs, var keys, var messages) = (stored_data~load_uint(32), stored_data~load_uint(4), stored_data~load_dict(), stored_data~load_dict());
+    stored_data.end_parse();
+
+    set_data(begin_cell().store_uint(stored_seqno, 32).store_uint(min_sigs, 4).store_dict(keys).store_dict(messages).end_cell());
     return ();
   }
 

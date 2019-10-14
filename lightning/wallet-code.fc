@@ -53,7 +53,9 @@ int udict_has?(cell dict, int key_len, int index) asm(index dict key_len) "DICTU
     ;; Throw if multiSigFuture$11
     throw_if(32, message~load_uint(1));
 
-    ;; Return if multiSigInit$10
+    ;; Accept and return if multiSigInit$10
+    accept_message();
+    
     return ();
   }
 
