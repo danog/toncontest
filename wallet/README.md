@@ -2,16 +2,16 @@
 
 Daniil Gentili's submission (@danogentili, <daniil@daniil.it>).
 
-Upgradable multisignature wallet, with custom scripts to deserialize and inspect the contents of BOC files containing TL-B Message constructors, create, sign and verify wallet requests and wallet code upgrades.
-All custom data structures used in the wallet can be viewed as a custom TL-B scheme in `proto/scheme.tlb` (some basic TON constructors are also included for reference).
-Most smart contact get-methods (except for the basic seqno and getPartials methods) return an integer, indicating whether the operation was successful and the requested data was found, followed by a cell/integer with the found data (or an empty cell/0 in case of failure).
+Upgradable multisignature wallet, with custom scripts to deserialize and inspect the contents of BOC files containing TL-B Message constructors, create, sign and verify wallet requests and wallet code upgrades.  
+All custom data structures used in the wallet can be viewed as a custom TL-B scheme in `proto/scheme.tlb` (some basic TON constructors are also included for reference).  
+Most smart contact get-methods (except for the basic seqno and getPartials methods) return an integer, indicating whether the operation was successful and the requested data was found, followed by a cell/integer with the found data (or an empty cell/0 in case of failure).  
 
-I've been having some issues generating a TON zerostate in order to test my contract using `test-ton-collator`, which is why I have created a full testing platform with a collator emulator in FIFT that parses the generated external messages and runs the required logic (including code and data initialization from the StateInit of constructor messages, with support for multiple consecutive method calls and data persistence) in the TVM, fully emulating the logic of `Transaction::unpack_input_msg` and `Collator::create_ordinary_transaction`.
+I've been having some issues generating a TON zerostate in order to test my contract using `test-ton-collator`, which is why I have created a full testing platform with a collator emulator in FIFT that parses the generated external messages and runs the required logic (including code and data initialization from the StateInit of constructor messages, with support for multiple consecutive method calls and data persistence) in the TVM, fully emulating the logic of `Transaction::unpack_input_msg` and `Collator::create_ordinary_transaction`.  
 
-I have rechecked the validity of generated BOC files against the TL-B schemes for blockchain messages, and everything seems to work in my offchain test suite, but my messages (at least the constructor messages) aren't accepted by the testnet: I've tried using the `test-ton-collator` program to simulate the workflow (and get logs!) of the collators that reject my messages, but I encountered problems with the creation of a zerostate for the blockchain collator, explained in detail in issue [#144](https://github.com/ton-blockchain/ton/issues/144).
-I've tested throughly the smart contract using my local collator emulator (`test.fif`), but I couldn't get the actual TON collator to start due to missing documentation.
+I have rechecked the validity of generated BOC files against the TL-B schemes for blockchain messages, and everything seems to work in my offchain test suite, but my messages (at least the constructor messages) aren't accepted by the testnet: I've tried using the `test-ton-collator` program to simulate the workflow (and get logs!) of the collators that reject my messages, but I encountered problems with the creation of a zerostate for the blockchain collator, explained in detail in issue [#144](https://github.com/ton-blockchain/ton/issues/144).  
+I've tested throughly the smart contract using my local collator emulator (`test.fif`), but I couldn't get the actual TON collator to start due to missing documentation.  
 
-Anyway, I had loads of fun working with funC and especially fift, and I'm really looking forward to building stuff on TON; especially TON services on the P2P ADNL network, I'll start by adding support for the ADNL protocol in my MTProto client, [MadelineProto](https://github.com/danog/MadelineProto); but I'll also experiment more with the TON blockchain, creating s'more smart contracts.
+Anyway, I had loads of fun working with funC and especially fift, and I'm really looking forward to building stuff on TON; especially TON services on the P2P ADNL network, I'll start by adding support for the ADNL protocol in my MTProto client, [MadelineProto](https://github.com/danog/MadelineProto); but I'll also experiment more with the TON blockchain, creating s'more smart contracts.  
 
 ## Project structure
 
@@ -107,6 +107,9 @@ Scripts:
 The `test.sh` script contains a full set of commands to test every fift script.
 You might want to run each command inside `test.sh` separately (there are also multiple comments explaining what each line does in detail), or run `./test.sh | less` to be able to better review the output of each command.
 
+What follows is a line-by-line description of the actions in `test.sh`.
+
+
 The script starts by creating ten public/private keypairs using `gen-pub.fif`:  
 ```
 for f in {a..j}; do fift -s ../gen-pub.fif $f;done
@@ -122,19 +125,18 @@ After extracting the computed wallet address from `log`, the scripts generates a
 fift -s ../create.fif pony a 0 $address 0 10 a
 ```
 
-Here, note the `a 0`: to save space, I have chosen to not use the entire ecdh key as key in the signature dictionary.
-Instead, a **key ID** is used to distinguish signatures made by certain keys: this is a simple 4-bit value (instead of 256 bits!), equal to the position of the key in the `wallet-create` argument list.
-In this case, the `a` key was the first key (`{a..j}` in Bash is shorthand for `a b c .. j`), so the ID is `0`.
-What follows is the address, the seqno, the amount of grams and the savefile (`a`) for the query.
+Here, note the `a 0`: to save space, I have chosen to not use the entire ecdh key as key in the signature dictionary.  
+Instead, a **key ID** is used to distinguish signatures made by certain keys: this is a simple 4-bit value (instead of 256 bits!), equal to the position of the key in the `wallet-create` argument list.  
+In this case, the `a` key was the first key (`{a..j}` in Bash is shorthand for `a b c .. j`), so the ID is `0`.  
+What follows is the address, the seqno, the amount of grams and the savefile (`a`) for the query.  
 
-
-Some helper Bash functions are defined:
+Some helper Bash functions are defined:  
 ```
 chr() { [ "$1" -lt 256 ] || return 1; printf "\\$(printf '%03o' "$1")"; }
 ord() { LC_CTYPE=C printf '%d' "'$1"; }
 ```
 
-Sign the query using all keys separately, creating eight more boc files, each signed by TWO keys only (key `a` and key `{b..j}`):
+Sign the query using all keys separately, creating eight more boc files, each signed by TWO keys only (key `a` and key `{b..j}`):  
 ```
 for f in {1..9}; do fift -s ../sign.fif a $(chr $((97+f))) $(chr $((97+f))) $f;done
 ```
@@ -173,7 +175,7 @@ fift -s ../test.fif \
 
 `test-update.sh` should be run after `test.sh`, it executes a similar set of operations:
 
-* The wallet is initialized as before (10 signatures required to send message)
+* The wallet is initialized as before (**10 signatures required** to send message)
 * A simple message is created with only 1 signature (`a`), sending 10 grams to the wallet itself
 * This message is sent to the wallet and stored, waiting for further (9 more) signatures
 * A **code upgrade** message is created with only 1 signature (`a`): the upgrade sets to 3 the minimum number of required signatures
@@ -183,7 +185,7 @@ fift -s ../test.fif \
     
     This code upgrade message, however, was signed by all **10** users, so it's really just a simpler way to upgrade a wallet: instead of creating new wallet => moving all funds to new upgraded wallet, a simple code upgrade message is signed.
 * 2 more signatures (`b`, `c`) are appended to the **simple** message
-* The simple message with additional signatures (`b`, `c`) is sent to the wallet, sending out wallet funds since all **3 required signatures** are gathered.
+* The simple message with additional signatures (`b`, `c`) is sent to the wallet, sending out wallet funds since all **3 required signatures** are gathered.  
 
-If we were running on the blockchain, at this point the smart contract code root would be updated to point to the new code, allowing us to use the new `getMagic` (77784) method that returns (420, 69) when called.
+If we were running on the blockchain, at this point the smart contract code root would be updated to point to the new code, allowing us to use the new `getMagic` (77784) method that returns (420, 69) when called.  
 Since we're running in a local TVM instance, and fift's `runvm` primitives have no way of returning the output action list (including changes to the code), the code isn't actually updated, but the modified signature list and minSig data structures in the persistent contract storage are indeed returned to the fift stack and re-used for the next TVM method call, allowing us to test the feature.

@@ -49,4 +49,4 @@ AsmOp compile_tuple_atq(std::vector<VarDescr>& res, std::vector<VarDescr>& args)
   define_builtin_func("atq", TypeExpr::new_forall({X}, TypeExpr::new_map(TupleInt, X)), compile_tuple_atq);
 ```
 
-As well as tuple set primitives (which I actually intended to implement in funC and use in a previous version of the wallet smart contract, then scrapped in favor of a simple dictionary).
+...as well as tuple set primitives (which I actually intended to implement in funC and use in a previous version of the wallet smart contract, then scrapped in favor of a simple dictionary).
