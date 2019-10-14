@@ -6,7 +6,7 @@ Upgradable multisignature wallet, with custom scripts to deserialize and inspect
 All custom data structures used in the wallet can be viewed as a custom TL-B scheme in `proto/scheme.tlb` (some basic TON constructors are also included for reference).  
 Most smart contact get-methods (except for the basic seqno and getPartials methods) return an integer, indicating whether the operation was successful and the requested data was found, followed by a cell/integer with the found data (or an empty cell/0 in case of failure).  
 
-I created a full testing platform with a collator emulator in FIFT that parses the generated external messages and runs the required logic (including code and data initialization from the StateInit of constructor messages, with support for multiple consecutive method calls and data persistence) in the TVM, partially emulating the logic of `Transaction::unpack_input_msg` and `Collator::create_ordinary_transaction`.  
+I created a full testing platform with a collator emulator in FIFT that parses the generated external messages and runs the required logic (including code and data initialization from the StateInit of constructor messages, with support for multiple consecutive method calls and data persistence) in the TVM, partially emulating the logic of `Transaction::unpack_input_msg` and `Collator::create_ordinary_transaction`, also allowing us to run get-methods.  
 
 I've tested throughly the smart contract using my local collator emulator (`test.fif`), and the actual TON collator using a slightly tweaked [zerostate generator](https://github.com/ton-blockchain/ton/pull/145) and the custom `test-collator.sh` script.
 
@@ -104,7 +104,7 @@ Scripts:
 ## Testing
 
 The `test.sh` script contains a full set of commands to test every fift script.
-You might want to run each command inside `test.sh` separately (there are also multiple comments explaining what each line does in detail), or run `./test.sh | less` to be able to better review the output of each command.
+You might want to run each command inside `test.sh` separately (there are also multiple comments explaining what each line does in detail).
 
 What follows is a line-by-line description of the actions in `test.sh`.
 
