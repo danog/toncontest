@@ -7,25 +7,19 @@ pubKey$_ k:bits256 = PubKey;
 // 512 bits
 signature$_ R:bits256 s:bits256 = Signature;
 
-// Message + send ModeMessage
-modeMessage$0 mode:uint8 body:^(Message X) = ModeMessage X;
-// Special code upgrade message
-codeMessage$1 minSigs:(## 4) keys:(HashmapE 4 PubKey) code:^Cell = ModeMessage X;
+twoSignatures$_ a:^Signature b:^Signature = TwoSignatures;
 
-// Actual multisigned message
-wrappedMessage$_ expires_at:uint32 seqno:uint32 body:(ModeMessage X) = WrappedMessage X;
+// key ID => signature
+incomingState$00 signatures:(Either ^Signature TwoSignatures) seqno:uint32 delta:Grams {turn:(seqno % 2)} = Incoming;
+incomingGrams$01 signature:Signature reallyTransfer:Bit = Incoming;
+incomingInit$10 = Incoming;
+//incomingFuture$11 = Incoming;
 
-// -1, next resolver
-recordNS$_ resolver:MsgAddressInt = DNSRecord;
-// -2, owner information
-recordOwner$_ owner:MsgAddressInt = DNSRecord;
+// For internal storage
+state$_ signatures:TwoSignatures seqno:uint32 delta:Grams {turn:(seqno % 2)} = State;
 
-// 16, arbitrary text data
-recordTXT$_ length:(## 8) data:string = DNSRecord;
-
-dnsRecordCollection$_ records:(HashmapE 16 ^DNSRecord) = DNSRecordCollection;
-
-storage$_ seqno:uint32 domains:(PfxHashmapE 256 DNSRecordCollection) = Storage;
+// Storage
+storage$_ keyA:PubKey keyB:PubKey amountA:Grams amountB:Grams state:State = Storage X;
 
 // TON stuff
 

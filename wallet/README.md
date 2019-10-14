@@ -3,8 +3,15 @@
 Daniil Gentili's submission (@danogentili, <daniil@daniil.it>).
 
 Upgradable multisignature wallet, with custom scripts to deserialize and inspect the contents of BOC files containing TL-B Message constructors, create, sign and verify wallet requests and wallet code upgrades.
-All custom data structures used in the wallet can be viewed as a custom TL-B scheme in proto/scheme.tlb (some basic TON constructors are also included for reference).
+All custom data structures used in the wallet can be viewed as a custom TL-B scheme in `proto/scheme.tlb` (some basic TON constructors are also included for reference).
 Most smart contact get-methods (except for the basic seqno and getPartials methods) return an integer, indicating whether the operation was successful and the requested data was found, followed by a cell/integer with the found data (or an empty cell/0 in case of failure).
+
+I've been having some issues generating a TON zerostate in order to test my contract using `test-ton-collator`, which is why I have created a full testing platform with a collator emulator in FIFT that parses the generated external messages and runs the required logic (including code and data initialization from the StateInit of constructor messages, with support for multiple consecutive method calls and data persistence) in the TVM, fully emulating the logic of `Transaction::unpack_input_msg` and `Collator::create_ordinary_transaction`.
+
+I have rechecked the validity of generated BOC files against the TL-B schemes for blockchain messages, and everything seems to work in my offchain test suite, but my messages (at least the constructor messages) aren't accepted by the testnet: I've tried using the `test-ton-collator` program to simulate the workflow (and get logs!) of the collators that reject my messages, but I encountered problems with the creation of a zerostate for the blockchain collator, explained in detail in issue [#144](https://github.com/ton-blockchain/ton/issues/144).
+I've tested throughly the smart contract using my local collator emulator (`test.fif`), but I couldn't get the actual TON collator to start due to missing documentation.
+
+Anyway, I had loads of fun working with funC and especially fift, and I'm really looking forward to building stuff on TON; especially TON services on the P2P ADNL network, I'll start by adding support for the ADNL protocol in my MTProto client, [MadelineProto](https://github.com/danog/MadelineProto); but I'll also experiment more with the TON blockchain, creating s'more smart contracts.
 
 ## Project structure
 
@@ -13,8 +20,8 @@ Fift scripts:
     The external TL-B Message X object is deserialized, with info printed to stdout.  
     Then, the custom `multiSigWrapper`, `wrappedMessage`, `modeMessage` and `codeMessage` TL-B objects are deserialized, with info printed to stdout.  
     In the case of `modeMessage` (simple message to be sent by wallet once enough signatures are gathered), a the internal Message X object is also unpacked, with info printed to stdout.  
-    In the case of `codeMessage`, the new public key dictionary is unpacked an printed to stdout, along with a csr dump of the code slice and other info.  
-* `test.fif` - TVM testing platform
+    In the case of `codeMessage`, the new public key dictionary is unpacked and printed to stdout, along with a csr dump of the code slice and other info.  
+* `test.fif` - TVM testing platform (collator emulator)
     ```
     usage: test.fif <init-message> <message> <func> [ <message2> <func2> ... ]
     ```

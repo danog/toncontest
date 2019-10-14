@@ -44,16 +44,16 @@ keys explode
 dup 1-         // Create counter
 dictnew swap   // ...and dict (swap the two)
 rot            // Put length on top for times
-{ dup 1- swap  // Decrement counter
-  3 roll           // Get n-th value v (val dict ncount curcount)
+{ dup 1- swap  // Decrement counter    (val dict ncount curcount)
+  3 roll           // Get n-th value v (dict ncount curcount val)
   <b swap 256 u,   // Create builder bval
-  swap             // Get x            (dict ncount curcount bval)
-  3 roll           // Get dictionary s (dict ncount bval curcount)
-  4                // Get n            (ncount bval curcount dict) 4
-  b>udict!
+  swap             // Get x            (dict ncount bval curcount)
+  3 roll           // Get dictionary s (ncount bval curcount dict)
+  4                // Get n            (ncount bval curcount dict 4)
+  b>udict!         // Store            (ncount dict')
   not abort"Failure storing dictionary value!"
 
-  swap
+  swap             // Swap dict        (dict' ncount)
 } swap times drop const keys-dict
 .s
 // code
@@ -66,15 +66,13 @@ rot            // Put length on top for times
    keys-dict dict,
    dictnew dict, 
 b>
-// no libraries
-null
 // create StateInit
 // _ split_depth:(Maybe (## 5)) special:(Maybe TickTock)
 //   code:(Maybe ^Cell) data:(Maybe ^Cell)
 //   library:(HashmapE 256 SimpleLib) = StateInit;
-// split_depth 0 special 0 code 1 data 1
+// split_depth 0 special 0 code 1 data 1 library hme_empty 0
 //
-<b b{0011} s, 3 roll ref, rot ref, swap dict, b> 
+<b b{00110} s, rot ref, swap ref, b> 
 
 dup ."StateInit: " <s csr. cr
 dup hash wc swap 2dup 2constant wallet-addr
@@ -95,7 +93,7 @@ swap
 //                 init:(Maybe (Either StateInit ^StateInit))
 //                                                             body:(Either X ^X) = Message X;
 
-<b b{1000100} s, wallet-addr addr, b{00001} s, swap maybe-ref, b{0} s, swap <s s, b>
+<b b{1000100} s, wallet-addr addr, 0 Gram, 1 1 u, swap maybe-ref, b{0} s, swap <s s, b>
 dup ."External message for initialization is " <s csr. cr
 2 boc+>B dup Bx. cr
 file-base +"-create.boc" tuck B>file

@@ -83,20 +83,19 @@ dup hash wc swap 2dup 2constant wallet-addr
 ."Non-bounceable address (for init): " 2dup 7 .Addr cr
 ."Bounceable address (for later access): " 6 .Addr cr
 
-
-// storage$_ seqno:uint32 domains:(PfxHashmapE 256 DNSRecordCollection) = Storage;
-<b 0 32 u, -1 32 i, b>
-dup ."signing message: " <s csr. cr
-dup hash privkey ed25519_sign_uint
+// multiSigInit$10 = MultiSigWrapper X;
+<b 2 2 u, b>
+// dup ."signing message: " <s csr. cr
+// dup hash privkey ed25519_sign_uint
 
 // Put StateInit on top
-rot
+swap
 
 // message$_ {X:Type} info:CommonMsgInfo
 //                 init:(Maybe (Either StateInit ^StateInit))
 //                                                             body:(Either X ^X) = Message X;
 
-<b b{1000100} s, wallet-addr addr, b{000010} s, swap <s s, b{0} s, swap B, swap <s s, b>
+<b b{1000100} s, wallet-addr addr, 0 Gram, 1 1 u, swap maybe-ref, b{0} s, swap <s s, b>
 dup ."External message for initialization is " <s csr. cr
 2 boc+>B dup Bx. cr
 file-base +"-create.boc" tuck B>file

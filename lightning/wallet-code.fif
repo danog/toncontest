@@ -1,5 +1,5 @@
 "Asm.fif" include
-// automatically generated from `/home/daniil/repos/contest/lib/crypto/smartcont/stdlib.fc` `wallet-code-update.fc` 
+// automatically generated from `/home/daniil/repos/contest/lib/crypto/smartcont/stdlib.fc` `./wallet-code.fc` 
 PROGRAM{
   DECLPROC ~collect_garbage
   DECLPROC store_db
@@ -12,7 +12,6 @@ PROGRAM{
   113609 DECLMETHOD getPartialsByKeyId
   125107 DECLMETHOD getPartialByKey
   100959 DECLMETHOD getPartialByHash
-  77784 DECLMETHOD getMagic
   ~collect_garbage PROC:<{
     -1 PUSHINT
     UNTIL:<{
@@ -63,7 +62,11 @@ PROGRAM{
   recv_external PROC:<{
     1 LDU
     SWAP
-    32 THROWIF
+    IFJMP:<{
+      1 LDU
+      DROP
+      32 THROWIF
+    }>
     DUP
     1 PLDU
     33 THROWIFNOT
@@ -368,9 +371,5 @@ PROGRAM{
     ROT
     STSLICER
     ENDC
-  }>
-  getMagic PROC:<{
-    420 PUSHINT
-    69 PUSHINT
   }>
 }END>c
