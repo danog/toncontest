@@ -1,4 +1,4 @@
-// This is a TL scheme explaining the message formats used by the multisig wallet.
+// This is just an approximated TL scheme, explaining the message formats used by the multisig wallet.
 // Multisig wallet constructors
 
 // 256 bits
@@ -7,30 +7,22 @@ pubKey$_ k:bits256 = PubKey;
 // 512 bits
 signature$_ R:bits256 s:bits256 = Signature;
 
-// Message + send ModeMessage
-modeMessage$0 mode:uint8 body:^(Message X) = ModeMessage X;
-// Special code upgrade message
-codeMessage$1 minSigs:(## 4) keys:(HashmapE 4 PubKey) code:^Cell = ModeMessage X;
-
-// Actual multisigned message
-wrappedMessage$_ expires_at:uint32 seqno:uint32 body:(ModeMessage X) = WrappedMessage X;
+// Count with refs
+twoSignatures$_ a:^Signature b:^Signature = MaybeTwoSignatures;
+oneSignatureA$0 a:^Signature = MaybeTwoSignatures;
+oneSignatureB$1 b:^Signature = MaybeTwoSignatures;
 
 // key ID => signature
-multiSigWrapper$0 signatures:(HashmapE 4 Signature) message:(WrappedMessage X) = MultiSigWrapper X;
-multiSigInit$10 = MultiSigWrapper X;
-//multiSigFuture$11 = MultiSigWrapper X;
+incomingState$_ signatures:MaybeTwoSignatures seqno:uint32 delta:Grams final:Bool {turnB:(seqno % 2)} = Incoming;
 
-// For internal storage, no constructor ID and number of signatures per message
-multiSigWrapperStorage$_ count:(## 4) signatures:(HashmapE 4 Signature) message:(WrappedMessage X) = MultiSigWrapperStorage X;
+incomingGrams$_ signature:Signature transferToA:Bool = IncomingInternal;
 
 
-// Not doing explicit versioning here, since the structure of the storage can only change after an update of the onchain wallet code
-// Max 10 keys (not sure about this, the contest instruction file says 10 in one place and 100 in another, so I chose 10 => 16 => 2^(4))
-//
-// In this case, HashmapE n X types are used (instead of ^X), since values in hashmap are already stored as references (each fork has two references to further hashmaps)
-// ...and 32 + 4 + (~2+8+256 bits for messages assuming long label) + (~1+4+4 bits for keys assuming unary label), still less than 1023
-storage$_ seqno:uint32 minSigs:(## 4) keys:(HashmapE 4 PubKey) messages:(HashmapE 256 (MultiSigWrapperStorage X)) 
-          { minSigs > 0 } { n >= minSigs } { n <= 10 } { minSigs <= 10 } = Storage X;
+// For internal storage
+state$_ signatures:MaybeTwoSignatures seqno:uint32 delta:Grams final:Bool {turnB:(seqno % 2)} = State;
+
+// Storage
+storage$_ keyA:PubKey keyB:PubKey amountA:Grams amountB:Grams state:State = Storage X;
 
 // TON stuff
 

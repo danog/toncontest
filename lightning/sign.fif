@@ -1,0 +1,50 @@
+#!/usr/bin/env -S fift -s
+"TonUtil.fif" include
+"lib.fif" include
+
+{
+  ."usage: " @' $0 type ." <input> <output> <key> <key-id>" cr
+  ."Signs multisig <input>.boc file with private key <key-id> loaded from file <key>.pk and writes result to <output>.boc" cr 1 halt
+} : usage
+$# 4 < ' usage if
+
+$1 =: input-file
+$2 =: output-file
+$3 =: key
+$4 parse-int =: key-id
+
+input-file +".boc" load-boc constant order
+key +".pk" load-keypair nip constant wallet_pk
+
+order inspect cr 
+
+// multiSigWrapper$0 signatures:(HashmapE 4 Signature) message:(WrappedMessage X) = MultiSigWrapper X;
+message-contents
+  1 u@+ nip   // $0 was already verified
+  
+  // multiSigWrapper$0 signatures:(HashmapE 4 Signature) message:(WrappedMessage X) = MultiSigWrapper X;
+  dict@+
+  s>c    // Message on top, signatures underneath
+
+dup ."signing message: " <s csr. cr
+dup hash wallet_pk ed25519_sign_uint
+
+256 B>u@+ swap 256 B>u@ swap
+<b swap 256 u, swap 256 u, b> <s
+
+rot
+// Now we have (message) value dict
+
+// udict! => value key dict bits
+key-id swap 4 udict! not abort"Failure adding signature!"
+
+// Now we have message dict
+// multiSigWrapper$0 signatures:(HashmapE 4 Signature) message:(WrappedMessage X) = MultiSigWrapper X;
+<b 0 1 u, swap dict, swap <s s, b>
+
+// Renerate external message
+<b 68 7 u, wallet-addr addr, 0 Gram, 0 1 u, swap maybe-ref, b>
+
+2 boc+>B dup Bx. cr
+output-file +".boc" tuck B>file
+."Saved new multisigned message to file " type cr

@@ -1,16 +1,14 @@
 ;; Multisig wallet smart contract (Daniil Gentili @danogentili <daniil@daniil.it>)
 
 ;; (Now unused) tuple manipulation primitives for integers
-;;
-;; tuple tuple_set(tuple t, int index, int value) asm(t value index) "SETINDEXVARQ";
-;; (tuple, ()) ~tuple_set(tuple t, int index, int value) asm(t value index) "SETINDEXVARQ";
+tuple tuple_set(tuple t, int index, int value) asm(t value index) "SETINDEXVARQ";
+(tuple, ()) ~tuple_set(tuple t, int index, int value) asm(t value index) "SETINDEXVARQ";
 
 ;; Tuple manipulation primitives for cells
-;;
-;; tuple tuple_setcell(tuple t, int index, cell value) asm(t value index) "SETINDEXVARQ";
-;; (tuple, ()) ~tuple_setcell(tuple t, int index, cell value) asm(t value index) "SETINDEXVARQ";
+tuple tuple_setcell(tuple t, int index, cell value) asm(t value index) "SETINDEXVARQ";
+(tuple, ()) ~tuple_setcell(tuple t, int index, cell value) asm(t value index) "SETINDEXVARQ";
 
-;; int tuple_len(tuple t) asm "TLEN";
+int tuple_len(tuple t) asm "TLEN";
 
 cell udict_set(cell dict, int key_len, int index, slice value) asm(value index dict key_len) "DICTUSET";
 (cell, ()) ~udict_set(cell dict, int key_len, int index, slice value) asm(value index dict key_len) "DICTUSET";
@@ -37,6 +35,10 @@ int udict_has?(cell dict, int key_len, int index) asm(index dict key_len) "DICTU
   } until (~ ok);
 
   return (messages, ());
+}
+
+() store_db(int seqno, cell keys, cell messages) {
+  set_data(begin_cell().store_uint(seqno, 32).store_dict(keys).store_dict(messages).end_cell());
 }
 
 () recv_internal(slice message) impure {

@@ -1,0 +1,114 @@
+"TonUtil.fif" include
+"lib.fif" include
+
+{
+  ."usage: " @' $0 type ." <init-message> <message> <func> [ <message2> <func2> ... ]" cr
+  ."Runs the function with ID <func> in the TON VM, using code and storage data from <init-message>.boc and <message>.boc as message (OR as the only integer parameter of get-method, if <message>.boc does not exist)." cr 1 halt
+} : usage
+$# 3 < ' usage if
+$1 +".boc" load-boc const init-boc
+$# 1- 2 /c const message-count
+
+variable-set function function!
+variable-set code code!
+variable-set storage storage!
+variable-set retcode retcode!
+
+
+// c7
+// [ magic:0x076ef1ea actions:Integer msgs_sent:Integer
+// unixtime:Integer block_lt:Integer trans_lt:Integer
+// rand_seed:Integer balance_remaining:[Integer (Maybe Cell)]
+// myself:MsgAddressInt global_config:(Maybe Cell)
+// ] = SmartContractInfo;
+0x076ef1ea 0 0 now 0 0 <b 1234 32 u, b> hash 7 tuple 1 tuple const ctx
+
+// message$_ {X:Type} info:CommonMsgInfo
+//   init:(Maybe (Either StateInit ^StateInit))
+//   body:(Either X ^X) = Message X;
+
+init-boc <s
+  // External message
+  7 u@+ swap 68 <> { ."There seems to be an invalid header" cr } if // 1000100 => 68
+
+  8 i@+
+  256 u@+ -rot
+  ."Init wallet address:    " .addr cr
+    
+  Gram@+ nip // Ignore grams
+
+  1 u@+ swap
+  1- abort"This does not seem to be an init message"
+
+  1 u@+ swap
+  { ."Loading ref..." cr ref@ <s } if // Load ref to StateInit if ref
+    
+  // _ split_depth:(Maybe (## 5)) special:(Maybe TickTock)
+  //   code:(Maybe ^Cell) data:(Maybe ^Cell)
+  //   library:(HashmapE 256 SimpleLib) = StateInit;
+
+
+  1 u@+ swap
+  { ."Has split_depth" cr 5 u@+ nip } if // Ignore split_depth
+
+  1 u@+ swap
+  { ."Has TikTok" cr 2 u@+ nip } if // Ignore TikTok ;)
+
+  1 u@+ swap
+  1- abort"No code!"
+  ref@+ <s code! // Load code
+
+  1 u@+ swap
+  1- abort"No data!"
+  ref@+ storage! // Load storage
+  
+  1 u@+ nip // Skip libs
+
+  1 u@+ swap
+  { ."Loading body ref..." cr ref@ } if // Load ref to body if ref
+  message-contents! // Load init message
+  -1 function! // External message
+
+{
+  ."INIT: Calling " function . cr cr
+  message-contents function code storage ctx runvmctx .s
+  swap retcode!
+  ."Retcode: " retcode . cr
+  dup storage!
+  inspect-storage
+
+  retcode 0 <> abort"Exception"
+} : ponyvm
+
+cr ."===================================================" cr cr
+ponyvm
+
+2 { dup 1+ swap // Increase counter
+  cr ."===================================================" cr cr
+  $() +".boc"
+  dup file-exists? 
+  {
+    load-boc inspect // Automatically sets message-contents
+  }
+  {
+    drop
+    dup 1- $() parse-int 
+    // <b swap 256 u, b>
+    message-contents!
+  } cond
+  
+ 
+  dup 1+ swap     // Increase counter
+  $() parse-int function!
+
+  ponyvm
+
+  // Manually drop return values of functions
+  function -1 <> {
+    2drop
+  } if
+
+  // rot
+  // ."Signature: "
+  // 64 B@ Bx.
+} message-count times

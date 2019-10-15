@@ -1,0 +1,217 @@
+;; Multisig wallet smart contract (Daniil Gentili @danogentili <daniil@daniil.it>)
+
+cell udict_set(cell dict, int key_len, int index, slice value) asm(value index dict key_len) "DICTUSET";
+(cell, ()) ~udict_set(cell dict, int key_len, int index, slice value) asm(value index dict key_len) "DICTUSET";
+int udict_has?(cell dict, int key_len, int index) asm(index dict key_len) "DICTUGET" "NULLSWAPIFNOT" "NIP";
+
+slice skip_grams(slice s) asm "LDGRAMS" "NIP";
+int preload_grams(slice s) asm "LDGRAMS" "DROP";
+
+;; twoSignatures$_ a:^Signature b:^Signature = MaybeTwoSignatures;
+;; oneSignatureA$0 a:^Signature = MaybeTwoSignatures;
+;; oneSignatureB$1 b:^Signature = MaybeTwoSignatures;
+;;
+slice skip_sigs(slice data) {
+  if (data.slice_refs() == 2) {
+    return data;
+  } else {
+    return data.skip_bits(1);
+  }
+}
+
+;; twoSignatures$_ a:^Signature b:^Signature = MaybeTwoSignatures;
+;; oneSignatureA$0 a:^Signature = MaybeTwoSignatures;
+;; oneSignatureB$1 b:^Signature = MaybeTwoSignatures;
+;;
+;; sigMask: 3 (11) => AB, 2 (10) => B, 1 (01) => A
+;;
+;;       int sigMask, cell sigA, cell sigB
+(slice, (int, cell, cell)) ~load_sigs(slice data) {
+  if (data.slice_refs() == 2) {   ;; Two signatures
+    return (data, (3, data~load_ref(), data~load_ref()));
+  } else {
+    if (data~load_uint(1)) { ;; One signature  (B)
+      return (data, (2, new_dict(), data~load_ref()));
+    } else {                 ;; One signature  (A)
+      return (data, (1, data~load_ref(), new_dict()));
+    }
+  }
+}
+
+(int, cell, cell) preload_sigs(slice data) {
+  return data~load_sigs();
+}
+
+;; twoSignatures$_ a:^Signature b:^Signature = MaybeTwoSignatures;
+;; oneSignatureA$0 a:^Signature = MaybeTwoSignatures;
+;; oneSignatureB$1 b:^Signature = MaybeTwoSignatures;
+;;
+;; sigMask: 3 (11) => AB, 2 (10) => B, 1 (01) => A
+;;
+builder store_sigs(builder b, int sigMask, cell sigA, cell sigB) {
+  if (sigMask == 3) {
+    return b.store_ref(sigA).store_ref(sigB);
+  } else {
+    if (sigMask == 2) {
+      return b.store_uint(1, 1).store_ref(sigB);
+    } else { ;; Assume 1, since 0 is not possible
+      return b.store_uint(0, 1).store_ref(sigA);
+    }
+  }
+}
+;;
+;; state$_ signatures:MaybeTwoSignatures seqNo:uint32 delta:Grams final:Bool {turnB:(seqNo % 2)} = State;
+;; storage$_ keyA:PubKey keyB:PubKey amountA:Grams amountB:Grams state:State = Storage X;
+;;
+;; int keyA, int keyB, int amountA, int amountB, int sigMask, cell sigA, cell sigB, int seqNo, int delta, int final
+(int, int, int, int, int, cell, cell, int, int, int) load_storage() {
+  slice stored_data = get_data().begin_parse();
+  (int keyA, int keyB, int amountA, int amountB, (int sigMask, cell sigA, cell sigB), int seqNo, int delta, int final) = (
+    stored_data~load_uint(256),
+    stored_data~load_uint(256),
+    stored_data~load_grams(),
+    stored_data~load_grams(),
+    stored_data~load_sigs(),
+    stored_data~load_uint(32),
+    stored_data~load_grams(),
+    stored_data~load_uint(1));
+  stored_data.end_parse();
+
+  return (keyA, keyB, amountA, amountB, sigMask, sigA, sigB, seqNo, delta, final);
+}
+
+() store_storage(int keyA, int keyB, int amountA, int amountB, int sigMask, cell sigA, cell sigB, int seqNo, int delta, int final) {
+  set_data(
+    begin_cell()
+    .store_uint(keyA, 256)
+    .store_uint(keyB, 256)
+    .store_grams(amountA)
+    .store_grams(amountB)
+    .store_sigs(sigMask, sigA, sigB)
+    .store_uint(seqNo, 32)
+    .store_grams(delta)
+    .store_uint(final, 1)
+    .end_cell());
+  return ();
+}
+
+;; Cleanup expired partial orders
+() recv_internal(slice message) impure {
+  ;; do nothing for internal messages
+}
+
+;; incomingState$_ signatures:MaybeTwoSignatures seqNo:uint32 delta:Grams final:Bool {turnB:(seqNo % 2)} = Incoming;
+;;
+() recv_external(slice message) impure {
+  (int msgSigMask, cell msgSigA, cell msgSigB) = message~load_sigs();
+  slice message_copy = message;
+  (int msgSeqNo, int msgDelta, int msgFinal) = (message_copy~load_uint(32), message~load_grams(), message~load_uint(1));
+
+  (int keyA, int keyB, int amountA, int amountB, int sigMask, cell sigA, cell sigB, int seqNo, int delta, int final) = load_storage();
+
+  int diff = msgSeqNo - seqNo;
+  ;; Missing some inbetween state
+  throw_if(33, diff > 1);
+  ;; Old message
+  throw_if(34, diff < 0);
+
+  if (diff) { ;; > 0, New state
+    ;; If current state isn't complete yet
+    throw_unless(35, sigMask == 3);
+
+    ;; Apply new seqNo and reset sigMask
+    seqNo = msgSeqNo;
+    sigMask = 0;
+
+    ;; Make sure the message delta is correct for the current turn
+    ;;
+    ;; A and B own a+δ and b − δ coins, respectively
+    ;;
+    ;; Thus, A can only make δ smaller (not bigger!)
+    ;; Thus, B can only make δ bigger (not smaller!)
+    ;;
+    int deltaDiff = msgDelta - delta;
+    if (seqNo % 2) { ;; If it's B's turn
+      ;; B can only make δ bigger (not smaller!)
+      throw_if(36, deltaDiff < 0);
+
+      ;; You can't transfer more than amountB funds to A
+      throw_if(37, amountB - msgDelta < 0);
+
+    } else {         ;; If it's A's turn
+      ;; A can only make δ smaller (not bigger!)
+      throw_if(36, deltaDiff > 0);
+
+      ;; You can't transfer more than amountA funds to B
+      throw_if(37, amountA + msgDelta < 0);
+
+    }
+
+    delta = msgDelta;
+    final = msgFinal;
+  } else { ;; == 0, Completion of state
+    ;; If current state is already complete
+    throw_if(35, sigMask == 3);
+
+    ;; Make sure message is the same (equivalent to checking the hash)
+    throw_unless(38, msgDelta == delta);
+    throw_unless(39, msgFinal == final);
+  }
+  accept_message();
+
+  int hash = slice_hash(message);
+
+  ;; Only check missing signatures, do not recheck existing ones
+  msgSigMask &= ~ sigMask;
+
+  if (msgSigMask & 1) { ;; Check A
+    throw_unless(39, check_signature(hash, msgSigA.begin_parse().preload_bits(512), keyA));
+    sigA = msgSigA;
+    sigMask |= 1;
+  }
+  if (msgSigMask & 2) { ;; Check B
+    throw_unless(40, check_signature(hash, msgSigB.begin_parse().preload_bits(512), keyB));
+    sigB = msgSigB;
+    sigMask |= 2;
+  }
+
+  if (sigMask == 3 & final) { ;; Close stuffs
+  }
+
+  ;; int keyA, int keyB, int amountA, int amountB, int sigMask, cell sigA, cell sigB, int seqNo, int delta, int final
+  store_storage(keyA, keyB, amountA, amountB, sigMask, sigA, sigB, seqNo, delta, final);
+}
+
+;; Get methods
+;;
+;; state$_ signatures:MaybeTwoSignatures seqNo:uint32 delta:Grams final:Bool {turnB:(seqNo % 2)} = State;
+;; storage$_ keyA:PubKey keyB:PubKey amountA:Grams amountB:Grams state:State = Storage X;
+int seqNo() method_id {
+  return get_data().begin_parse().skip_bits(512).skip_grams().skip_grams().skip_sigs().preload_uint(32);
+}
+
+int getDelta() method_id {
+  return get_data().begin_parse().skip_bits(512).skip_grams().skip_grams().skip_sigs().skip_bits(32).preload_grams();
+}
+
+int isTurnA() method_id {
+  return ~(seqNo() % 2);
+}
+int isTurnB() method_id {
+  return seqNo() % 2;
+}
+
+int getAmountA() method_id {
+  return get_data().begin_parse().skip_bits(512).preload_grams();
+}
+int getAmountB() method_id {
+  return get_data().begin_parse().skip_bits(512).skip_grams().preload_grams();
+}
+
+(int, cell, cell) getSignatures() method_id {
+  return get_data().begin_parse().skip_bits(512).skip_grams().skip_grams().preload_sigs();
+}
+
+int getHash() method_id {
+  return slice_hash(get_data().begin_parse().skip_bits(512).skip_grams().skip_grams().skip_sigs());
+}

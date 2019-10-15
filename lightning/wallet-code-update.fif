@@ -2,6 +2,7 @@
 // automatically generated from `/home/daniil/repos/contest/lib/crypto/smartcont/stdlib.fc` `wallet-code-update.fc` 
 PROGRAM{
   DECLPROC ~collect_garbage
+  DECLPROC store_db
   DECLPROC recv_internal
   DECLPROC recv_external
   85143 DECLMETHOD seqno
@@ -46,6 +47,15 @@ PROGRAM{
       s1 s2 XCHG
     }>
     DROP
+  }>
+  store_db PROC:<{
+    NEWC
+    s1 s3 XCHG
+    32 STU
+    STDICT
+    STDICT
+    ENDC
+    c4 POP
   }>
   recv_internal PROC:<{
     DROP

@@ -1,0 +1,330 @@
+"Asm.fif" include
+// automatically generated from `/home/daniil/repos/contest/lib/crypto/smartcont/stdlib.fc` `wallet-code.fc` 
+PROGRAM{
+  DECLPROC skip_sigs
+  DECLPROC ~load_sigs
+  DECLPROC preload_sigs
+  DECLPROC store_sigs
+  DECLPROC load_storage
+  DECLPROC store_storage
+  DECLPROC recv_internal
+  DECLPROC recv_external
+  84593 DECLMETHOD seqNo
+  125129 DECLMETHOD getDelta
+  112390 DECLMETHOD isTurnA
+  100197 DECLMETHOD isTurnB
+  101812 DECLMETHOD getAmountA
+  114135 DECLMETHOD getAmountB
+  78055 DECLMETHOD getSignatures
+  120167 DECLMETHOD getHash
+  skip_sigs PROC:<{
+    DUP
+    SREFS
+    2 EQINT
+    IFJMP:<{
+    }>
+    1 PUSHINT
+    SDSKIPFIRST
+  }>
+  ~load_sigs PROC:<{
+    DUP
+    SREFS
+    2 EQINT
+    IFJMP:<{
+      3 PUSHINT
+      SWAP
+      LDREF
+      LDREF
+      3 -ROLL
+    }>
+    1 LDU
+    SWAP
+    IFJMP:<{
+      2 PUSHINT
+      NEWDICT
+      s0 s2 XCHG
+      LDREF
+      s3 s3 XCHG2
+    }>
+    1 PUSHINT
+    SWAP
+    LDREF
+    NEWDICT
+    s3 s3 s0 XCHG3
+  }>
+  preload_sigs PROC:<{
+    ~load_sigs CALLDICT
+    s3 POP
+    ROT
+  }>
+  store_sigs PROC:<{
+    s2 PUSH
+    3 EQINT
+    IFJMP:<{
+      s2 POP
+      ROT
+      STREF
+      STREF
+    }>
+    s0 s2 XCHG
+    2 EQINT
+    IFJMP:<{
+      DROP
+      1 PUSHINT
+      ROT
+      1 STU
+      STREF
+    }>
+    NIP
+    0 PUSHINT
+    ROT
+    1 STU
+    STREF
+  }>
+  load_storage PROC:<{
+    c4 PUSH
+    CTOS
+    256 LDU
+    256 LDU
+    LDGRAMS
+    LDGRAMS
+    ~load_sigs CALLDICT
+    s0 s3 XCHG
+    32 LDU
+    LDGRAMS
+    1 LDU
+    ENDS
+    s4 s5 XCHG
+    s3 s4 XCHG
+  }>
+  store_storage PROC:<{
+    NEWC
+    s1 s10 XCHG
+    256 STU
+    s1 s8 XCHG
+    256 STU
+    s0 s6 XCHG2
+    STGRAMS
+    s0 s4 XCHG2
+    STGRAMS
+    s0 s3 XCHG
+    store_sigs CALLDICT
+    32 STU
+    SWAP
+    STGRAMS
+    1 STU
+    ENDC
+    c4 POP
+  }>
+  recv_internal PROC:<{
+    DROP
+  }>
+  recv_external PROC:<{
+    ~load_sigs CALLDICT
+    s3 PUSH
+    32 LDU
+    DROP
+    s0 s4 XCHG
+    LDGRAMS
+    1 LDU
+    load_storage CALLDICT
+    s3 POP
+    s3 POP
+    s14 s0 PUSH2
+    SUB
+    NIP
+    DUP
+    1 GTINT
+    33 THROWIF
+    DUP
+    0 LESSINT
+    34 THROWIF
+    IF:<{
+      DROP
+      SWAP
+      3 EQINT
+      35 THROWIFNOT
+      s7 PUSH
+      0 PUSHINT
+      s0 s2 XCHG
+      SUB
+      s12 PUSH
+      1 MODPOW2#
+      s13 POP
+      s0 s12 XCHG
+      IF:<{
+        s2 POP
+        s0 s10 XCHG
+        0 LESSINT
+        36 THROWIF
+        s9 s5 PUSH2
+        SUB
+        s6 POP
+        s9 POP
+        s0 s4 XCHG
+        0 LESSINT
+        37 THROWIF
+      }>ELSE<{
+        NIP
+        s0 s10 XCHG
+        0 GTINT
+        36 THROWIF
+        s0 s5 PUSH2
+        ADD
+        NIP
+        s5 POP
+        s0 s4 XCHG
+        0 LESSINT
+        37 THROWIF
+      }>
+    }>ELSE<{
+      s3 POP
+      s3 POP
+      s11 POP
+      s10 PUSH
+      3 EQINT
+      35 THROWIF
+      s6 s1 XCPU
+      EQUAL
+      NIP
+      38 THROWIFNOT
+      s3 s4 XCPU
+      EQUAL
+      39 THROWIFNOT
+      s2 s3 XCHG
+    }>
+    ACCEPT
+    SWAP
+    HASHSU
+    s7 PUSH
+    NOT
+    s1 s7 XCHG
+    AND
+    DUP
+    1 PUSHINT
+    AND
+    IF:<{
+      s5 PUSH
+      CTOS
+      s6 POP
+      s0 s5 XCHG
+      9 PUSHPOW2
+      PLDSLICEX
+      s6 s1 s(-1) PU2XC
+      CHKSIGNU
+      NIP
+      39 THROWIFNOT
+      s0 s5 XCHG
+      1 PUSHINT
+      OR
+    }>ELSE<{
+      s7 s1 s5 XCHG3
+      2DROP
+    }>
+    s0 s3 XCHG
+    2 PUSHINT
+    AND
+    IF:<{
+      OVER
+      CTOS
+      s2 POP
+      SWAP
+      9 PUSHPOW2
+      PLDSLICEX
+      s3 s0 s3 XC2PU
+      CHKSIGNU
+      s2 POP
+      SWAP
+      40 THROWIFNOT
+      2 PUSHINT
+      OR
+    }>ELSE<{
+      s2 s3 XCHG
+      3 BLKDROP
+    }>
+    3 PUSHINT
+    s2 PUSH
+    AND
+    s2 POP
+    s0 s1 PUXC
+    EQUAL
+    2DROP
+  }>
+  seqNo PROC:<{
+    c4 PUSH
+    CTOS
+    9 PUSHPOW2
+    SDSKIPFIRST
+    LDGRAMS
+    NIP
+    LDGRAMS
+    NIP
+    skip_sigs CALLDICT
+    32 PLDU
+  }>
+  getDelta PROC:<{
+    c4 PUSH
+    CTOS
+    9 PUSHPOW2
+    SDSKIPFIRST
+    LDGRAMS
+    NIP
+    LDGRAMS
+    NIP
+    skip_sigs CALLDICT
+    32 PUSHINT
+    SDSKIPFIRST
+    LDGRAMS
+    DROP
+  }>
+  isTurnA PROC:<{
+    seqNo CALLDICT
+    1 MODPOW2#
+    NOT
+  }>
+  isTurnB PROC:<{
+    seqNo CALLDICT
+    1 MODPOW2#
+  }>
+  getAmountA PROC:<{
+    c4 PUSH
+    CTOS
+    9 PUSHPOW2
+    SDSKIPFIRST
+    LDGRAMS
+    DROP
+  }>
+  getAmountB PROC:<{
+    c4 PUSH
+    CTOS
+    9 PUSHPOW2
+    SDSKIPFIRST
+    LDGRAMS
+    NIP
+    LDGRAMS
+    DROP
+  }>
+  getSignatures PROC:<{
+    c4 PUSH
+    CTOS
+    9 PUSHPOW2
+    SDSKIPFIRST
+    LDGRAMS
+    NIP
+    LDGRAMS
+    NIP
+    preload_sigs CALLDICT
+  }>
+  getHash PROC:<{
+    c4 PUSH
+    CTOS
+    9 PUSHPOW2
+    SDSKIPFIRST
+    LDGRAMS
+    NIP
+    LDGRAMS
+    NIP
+    skip_sigs CALLDICT
+    HASHSU
+  }>
+}END>c
