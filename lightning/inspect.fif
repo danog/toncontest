@@ -6,4 +6,4 @@ $# 1 < ' usage if
 
 "lib.fif" include
 
-$1 +".boc" load-boc inspect-state
+$1 +".boc" load-boc <s inspect-state

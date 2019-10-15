@@ -7,6 +7,21 @@ int udict_has?(cell dict, int key_len, int index) asm(index dict key_len) "DICTU
 slice skip_grams(slice s) asm "LDGRAMS" "NIP";
 int preload_grams(slice s) asm "LDGRAMS" "DROP";
 
+(slice, int) ~load_sgrams(slice s) {
+  int neg = s~load_uint(1);
+  if (neg) {
+    return (s, -(s~load_grams()));
+  }
+  return (s, s~load_grams());
+}
+int preload_sgrams(slice s) {
+  int neg = s~load_uint(1);
+  if (neg) {
+    return -(s.preload_grams());
+  }
+  return s.preload_grams();
+}
+
 slice skip_ref(slice s) asm "LDREF" "NIP";
 
 (slice, ((int, int), (int, int))) ~load_simple_addr_pair(slice data) {

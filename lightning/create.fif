@@ -47,7 +47,7 @@ previous-state file-exists? not { ."The previous state file was not created! Ask
 ."Confirmed previous state file: " previous-statec type cr 
 previous-statec file-exists? not { ."The previous state file was not confirmed! Sign the previous state, first." cr 1 halt } if
 
-previous-statec file>B B>boc inspect-state
+previous-statec file>B B>boc <s inspect-state
 sig-count 2 <> { ."Not enough signatures in previous state, need 2, have 1" cr 1 halt } if
 
 state-base +".addr" load-address
@@ -58,6 +58,8 @@ key +".pk" load-keypair nip constant privkey
 ."Transferring " amount .GR ."to other user..." cr 
 
 
+."Old delta:  " delta .GR cr 
+
 // A can only make δ smaller (not bigger!)
 // B can only make δ bigger (not smaller!)
 isA {
@@ -66,12 +68,13 @@ isA {
   delta amount + delta!
 } cond
 
+."New delta:  " delta .GR cr 
 // New state
-// state$_ signatures:MaybeTwoSignatures seqno:uint32 delta:Grams final:Bool {turnB:(seqno % 2)} = State;
+// state$_ signatures:MaybeTwoSignatures seqno:uint32 negative:Bool delta:Grams final:Bool {turnB:(seqno % 2)} = State;
 
 <b
   seqno 32 u,
-  delta Gram,
+  delta sGram,
   final 1 u,
 b>
 
@@ -82,7 +85,7 @@ dup hash privkey ed25519_sign_uint
 // oneSignatureA$0 a:^Signature = MaybeTwoSignatures;
 // oneSignatureB$1 a:^Signature = MaybeTwoSignatures;
 <b 
-  isA not 1 u,
+  isA ' 0 ' 1 cond 1 u,
   swap ref,
 b>
 

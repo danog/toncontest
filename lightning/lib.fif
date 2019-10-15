@@ -1,5 +1,11 @@
 "TonUtil.fif" include
 
+{
+  dup 0< ' 1 ' 0 cond rot swap 1 u, swap abs Gram,
+} : sGram,
+{
+  1 u@+ Gram@+ -rot swap ' negate if swap
+} : sGram@+
 // b body -- b'
 { tuck <s 2dup s-fits? not rot over 1 i, -rot
   { drop swap ref, } { s, nip } cond
@@ -60,12 +66,14 @@ variable-set final final!
   dup srefs
   2 = {
     ."Signature A: "
-    64 B@+ swap dup Bx. cr
+    ref@+ <s 64 B@+ swap dup Bx. cr
     sigA!
+    drop
 
     ."Signature B: "
-    64 B@+ swap dup Bx. cr
+    ref@+ <s 64 B@+ swap dup Bx. cr
     sigB!
+    drop
 
     2 sig-count!
   } {
@@ -75,13 +83,15 @@ variable-set final final!
       ."Signature A: empty" cr
       null sigA!
       ."Signature B: "
-      64 B@+ swap dup Bx. cr
+      ref@+ <s 64 B@+ swap dup Bx. cr
       sigB!
+      drop
     }
     {
       ."Signature A: "
-      64 B@+ swap dup Bx. cr
+      ref@+ <s 64 B@+ swap dup Bx. cr
       sigA!
+      drop
       ."Signature B: empty" cr
       null sigB!
     }
@@ -91,12 +101,12 @@ variable-set final final!
   32 u@+ swap
   ."Seqno: " . cr
 
-  Gram@+ swap
-  dup ."Delta grams: " . cr
+  sGram@+ swap
+  dup ."Delta grams: " .GR cr
   delta!
 
   1 u@+ swap
-  dup ."Final? " { ."Yes" } { ."No" } cond
+  dup ."Final? " { ."Yes" } { ."No" } cond cr
   final!
 
   drop
@@ -176,10 +186,10 @@ variable-set final final!
     ."Key B: " x. cr
 
     Gram@+ swap
-    ."Gram amount A: " x. cr
+    ."Gram amount A: " .GR cr
 
     Gram@+ swap
-    ."Gram amount B: " x. cr
+    ."Gram amount B: " .GR cr
 
     ref@+
 

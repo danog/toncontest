@@ -21,14 +21,16 @@ state-base +"-state" seqno (.) $+ +"c-ext.boc" const new-statec-ext
 previous-state file-exists? not { ."The state file was not created! Ask the other user to generate and send you a new state, first." cr 1 halt } if
 
 previous-state file>B B>boc <s inspect-state
-sig-count 2 == { ."Too many signatures in previous state, need 1, have 2" cr 1 halt } if
+sig-count 2 = { ."Too many signatures in previous state, need 1, have 2" cr 1 halt } if
 sigA null? {
-  0 const wasA
-  0 const isB
+  sigB
+  0
 } {
-  -1 const wasA
-  -1 const isB
+  sigA
+  1
 } cond
+const wasA // Whether the query was created by A or B
+const anySig
 
 // turnB isA
 // 1     0 => 1 OK
@@ -36,8 +38,8 @@ sigA null? {
 // 0     0 => 0 not OK
 // 0     1 => 1 OK
 
-seqno 2 mod waA xor 1 <> {
-  ."Not his turn!" cr 1 halt
+seqno 2 mod wasA xor 1 <> {
+  ."Not his turn to create the state!" cr 1 halt
 } if
 
 
@@ -53,17 +55,21 @@ key +".pk" load-keypair nip constant privkey
 
 <b
   seqno 32 u,
-  delta Gram,
+  delta sGram,
   final 1 u,
 b>
 
 dup ."Signing new state with seqno " seqno . .": " <s csr. cr
 dup hash privkey ed25519_sign_uint
+dup anySig B= { ."Signature A and B are the same!" cr 1 halt } if
+
+wasA ' sigB! ' sigA! cond
+
 // signature$_ R:bits256 s:bits256 = Signature;
-<b swap B, b>
 // twoSignatures$_ a:^Signature b:^Signature = MaybeTwoSignatures;
 <b 
-  swap ref,
+  sigA <b swap B, b> ref,
+  sigB <b swap B, b> ref,
 b>
 
 // state$_ signatures:MaybeTwoSignatures seqno:uint32 delta:Grams final:Bool {turnB:(seqno % 2)} = State;
@@ -74,8 +80,8 @@ b>
 
 dup ."Signed new state with seqno " seqno . ."is: " <s csr. cr
 dup 2 boc+>B dup Bx. cr
-new-state tuck B>file
-."(Saved zerostate to file " type .")" cr
+new-statec tuck B>file
+."(Saved new state to file " type .")" cr
 
 
 //
@@ -102,5 +108,5 @@ new-state tuck B>file
 
 dup ."resulting external message: " <s csr. cr
 2 boc+>B dup Bx. cr
-new-state-ext tuck B>file
+new-statec-ext tuck B>file
 ."(Saved to file " type .")" cr

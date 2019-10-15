@@ -1,6 +1,8 @@
 "Asm.fif" include
 // automatically generated from `/home/daniil/repos/contest/lib/crypto/smartcont/stdlib.fc` `wallet-code.fc` 
 PROGRAM{
+  DECLPROC ~load_sgrams
+  DECLPROC preload_sgrams
   DECLPROC ~load_simple_addr_pair
   DECLPROC preload_simple_addr_pair
   DECLPROC skip_sigs
@@ -23,6 +25,28 @@ PROGRAM{
   115661 DECLMETHOD hasSignatureA
   127918 DECLMETHOD hasSignatureB
   120167 DECLMETHOD getHash
+  ~load_sgrams PROC:<{
+    1 LDU
+    SWAP
+    IFJMP:<{
+      LDGRAMS
+      SWAP
+      NEGATE
+    }>
+    LDGRAMS
+    SWAP
+  }>
+  preload_sgrams PROC:<{
+    1 LDU
+    SWAP
+    IFJMP:<{
+      LDGRAMS
+      DROP
+      NEGATE
+    }>
+    LDGRAMS
+    DROP
+  }>
   ~load_simple_addr_pair PROC:<{
     8 LDI
     256 LDU
@@ -43,9 +67,15 @@ PROGRAM{
     SREFS
     2 EQINT
     IFJMP:<{
+      LDREF
+      NIP
+      LDREF
+      NIP
     }>
     1 PUSHINT
     SDSKIPFIRST
+    LDREF
+    NIP
   }>
   ~load_sigs PROC:<{
     DUP
