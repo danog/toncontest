@@ -12,17 +12,20 @@ twoSignatures$_ a:^Signature b:^Signature = MaybeTwoSignatures;
 oneSignatureA$0 a:^Signature = MaybeTwoSignatures;
 oneSignatureB$1 b:^Signature = MaybeTwoSignatures;
 
-// key ID => signature
-incomingState$_ signatures:MaybeTwoSignatures seqno:uint32 delta:Grams final:Bool {turnB:(seqno % 2)} = Incoming;
+simpleAddr$_ workchain_id:int8 address:bits256 = SimpleAddr;
 
-incomingGrams$_ signature:Signature transferToA:Bool = IncomingInternal;
+simpleAddrPair$_ a:SimpleAddr b:SimpleAddr = SimpleAddrPair;
+
+incomingState$_ signatures:MaybeTwoSignatures seqno:uint32 delta:Grams final:Bool {turnB:(seqno % 2)} = IncomingState;
 
 
-// For internal storage
+// In the case of zerostate, we're signing the exact same state that would be signed for normal interaction
+// Because the code + initial data with amounts is trusted (can by checked using hash = smart contract addr).
+//
 state$_ signatures:MaybeTwoSignatures seqno:uint32 delta:Grams final:Bool {turnB:(seqno % 2)} = State;
 
 // Storage
-storage$_ keyA:PubKey keyB:PubKey amountA:Grams amountB:Grams state:State = Storage X;
+storage$_ keyA:PubKey keyB:PubKey amountA:Grams amountB:Grams addresses:^SimpleAddrPair state:State = Storage X;
 
 // TON stuff
 

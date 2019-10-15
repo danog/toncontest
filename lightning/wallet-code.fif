@@ -1,6 +1,8 @@
 "Asm.fif" include
 // automatically generated from `/home/daniil/repos/contest/lib/crypto/smartcont/stdlib.fc` `wallet-code.fc` 
 PROGRAM{
+  DECLPROC ~load_simple_addr_pair
+  DECLPROC preload_simple_addr_pair
   DECLPROC skip_sigs
   DECLPROC ~load_sigs
   DECLPROC preload_sigs
@@ -15,8 +17,27 @@ PROGRAM{
   100197 DECLMETHOD isTurnB
   101812 DECLMETHOD getAmountA
   114135 DECLMETHOD getAmountB
+  105039 DECLMETHOD getAddrA
+  109100 DECLMETHOD getAddrB
   78055 DECLMETHOD getSignatures
+  115661 DECLMETHOD hasSignatureA
+  127918 DECLMETHOD hasSignatureB
   120167 DECLMETHOD getHash
+  ~load_simple_addr_pair PROC:<{
+    8 LDI
+    256 LDU
+    8 LDI
+    256 LDU
+    4 -ROLL
+  }>
+  preload_simple_addr_pair PROC:<{
+    8 LDI
+    DUP
+    256 PLDU
+    SWAP
+    8 LDI
+    256 PLDU
+  }>
   skip_sigs PROC:<{
     DUP
     SREFS
@@ -88,6 +109,7 @@ PROGRAM{
     256 LDU
     LDGRAMS
     LDGRAMS
+    LDREF
     ~load_sigs CALLDICT
     s0 s3 XCHG
     32 LDU
@@ -99,15 +121,17 @@ PROGRAM{
   }>
   store_storage PROC:<{
     NEWC
-    s1 s10 XCHG
+    s1 s11 XCHG
     256 STU
-    s1 s8 XCHG
+    s1 s9 XCHG
     256 STU
-    s0 s6 XCHG2
+    s0 s7 XCHG2
     STGRAMS
-    s0 s4 XCHG2
+    s0 s5 XCHG2
     STGRAMS
-    s0 s3 XCHG
+    s1 s3 XCHG
+    STREF
+    s2 s3 XCHG2
     store_sigs CALLDICT
     32 STU
     SWAP
@@ -117,7 +141,44 @@ PROGRAM{
     c4 POP
   }>
   recv_internal PROC:<{
+    NIP
+    CTOS
+    4 LDU
+    LDMSGADDR
     DROP
+    REWRITESTDADDR
+    s0 s2 XCHG
+    1 PUSHINT
+    AND
+    IFJMP:<{
+      2DROP
+    }>
+    load_storage CALLDICT
+    s6 s10 XCHG
+    10 BLKDROP
+    DUP
+    CTOS
+    NIP
+    preload_simple_addr_pair CALLDICT
+    s3 s4 XCPU
+    EQUAL
+    s2 s5 XCPU
+    EQUAL
+    s1 s2 XCHG
+    AND
+    IF:<{
+      4 BLKDROP
+    }>ELSE<{
+      ROT
+      EQUAL
+      s0 s2 XCHG
+      EQUAL
+      AND
+      IF:<{
+      }>ELSE<{
+        33 THROW
+      }>
+    }>
   }>
   recv_external PROC:<{
     ~load_sigs CALLDICT
@@ -130,18 +191,19 @@ PROGRAM{
     load_storage CALLDICT
     s3 POP
     s3 POP
-    s14 s0 PUSH2
+    s4 POP
+    s14 s3 PUSH2
     SUB
-    NIP
-    DUP
+    s4 POP
+    s3 PUSH
     1 GTINT
     33 THROWIF
-    DUP
+    s3 PUSH
     0 LESSINT
     34 THROWIF
+    s0 s3 XCHG
     IF:<{
-      DROP
-      SWAP
+      s2 POP
       3 EQINT
       35 THROWIFNOT
       s7 PUSH
@@ -181,16 +243,18 @@ PROGRAM{
       s3 POP
       s3 POP
       s11 POP
-      s10 PUSH
+      OVER
       3 EQINT
       35 THROWIF
-      s6 s1 XCPU
+      s6 s6 XCPU
       EQUAL
-      NIP
+      s6 POP
+      s0 s5 XCHG
       38 THROWIFNOT
-      s3 s4 XCPU
+      s3 s8 XCPU
       EQUAL
       39 THROWIFNOT
+      s3 s7 XCHG
       s2 s3 XCHG
     }>
     ACCEPT
@@ -242,13 +306,14 @@ PROGRAM{
       s2 s3 XCHG
       3 BLKDROP
     }>
-    3 PUSHINT
-    s2 PUSH
+    DUP
+    3 EQINT
+    NIP
+    OVER
     AND
-    s2 POP
-    s0 s1 PUXC
-    EQUAL
-    2DROP
+    NIP
+    IF:<{
+    }>
   }>
   seqNo PROC:<{
     c4 PUSH
@@ -258,6 +323,8 @@ PROGRAM{
     LDGRAMS
     NIP
     LDGRAMS
+    NIP
+    LDREF
     NIP
     skip_sigs CALLDICT
     32 PLDU
@@ -270,6 +337,8 @@ PROGRAM{
     LDGRAMS
     NIP
     LDGRAMS
+    NIP
+    LDREF
     NIP
     skip_sigs CALLDICT
     32 PUSHINT
@@ -304,6 +373,36 @@ PROGRAM{
     LDGRAMS
     DROP
   }>
+  getAddrA PROC:<{
+    c4 PUSH
+    CTOS
+    9 PUSHPOW2
+    SDSKIPFIRST
+    LDGRAMS
+    NIP
+    LDGRAMS
+    NIP
+    PLDREF
+    CTOS
+    8 LDI
+    256 PLDU
+  }>
+  getAddrB PROC:<{
+    c4 PUSH
+    CTOS
+    9 PUSHPOW2
+    SDSKIPFIRST
+    LDGRAMS
+    NIP
+    LDGRAMS
+    NIP
+    PLDREF
+    CTOS
+    264 PUSHINT
+    SDSKIPFIRST
+    8 LDI
+    256 PLDU
+  }>
   getSignatures PROC:<{
     c4 PUSH
     CTOS
@@ -313,7 +412,21 @@ PROGRAM{
     NIP
     LDGRAMS
     NIP
+    LDREF
+    NIP
     preload_sigs CALLDICT
+  }>
+  hasSignatureA PROC:<{
+    getSignatures CALLDICT
+    2DROP
+    1 PUSHINT
+    AND
+  }>
+  hasSignatureB PROC:<{
+    getSignatures CALLDICT
+    2DROP
+    2 PUSHINT
+    AND
   }>
   getHash PROC:<{
     c4 PUSH
@@ -323,6 +436,8 @@ PROGRAM{
     LDGRAMS
     NIP
     LDGRAMS
+    NIP
+    LDREF
     NIP
     skip_sigs CALLDICT
     HASHSU

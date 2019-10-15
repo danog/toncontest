@@ -7,6 +7,19 @@ int udict_has?(cell dict, int key_len, int index) asm(index dict key_len) "DICTU
 slice skip_grams(slice s) asm "LDGRAMS" "NIP";
 int preload_grams(slice s) asm "LDGRAMS" "DROP";
 
+slice skip_ref(slice s) asm "LDREF" "NIP";
+
+(slice, ((int, int), (int, int))) ~load_simple_addr_pair(slice data) {
+  (int workchainA, int addrA) = (data~load_int(8), data~load_uint(256));
+  (int workchainB, int addrB) = (data~load_int(8), data~load_uint(256));
+  return (data, ((workchainA, addrA), (workchainB, addrB)));
+}
+
+((int, int), (int, int)) preload_simple_addr_pair(slice data) {
+  return ((data~load_int(8), data.preload_uint(256)), (data~load_int(8), data.preload_uint(256)));
+}
+
+
 ;; twoSignatures$_ a:^Signature b:^Signature = MaybeTwoSignatures;
 ;; oneSignatureA$0 a:^Signature = MaybeTwoSignatures;
 ;; oneSignatureB$1 b:^Signature = MaybeTwoSignatures;
@@ -61,32 +74,34 @@ builder store_sigs(builder b, int sigMask, cell sigA, cell sigB) {
 }
 ;;
 ;; state$_ signatures:MaybeTwoSignatures seqNo:uint32 delta:Grams final:Bool {turnB:(seqNo % 2)} = State;
-;; storage$_ keyA:PubKey keyB:PubKey amountA:Grams amountB:Grams state:State = Storage X;
+;; storage$_ keyA:PubKey keyB:PubKey amountA:Grams amountB:Grams addresses:^SimpleAddrPair state:State = Storage X;
 ;;
-;; int keyA, int keyB, int amountA, int amountB, int sigMask, cell sigA, cell sigB, int seqNo, int delta, int final
-(int, int, int, int, int, cell, cell, int, int, int) load_storage() {
+;; int keyA, int keyB, int amountA, int amountB, cell addrPair, int sigMask, cell sigA, cell sigB, int seqNo, int delta, int final
+(int, int, int, int, cell, int, cell, cell, int, int, int) load_storage() {
   slice stored_data = get_data().begin_parse();
-  (int keyA, int keyB, int amountA, int amountB, (int sigMask, cell sigA, cell sigB), int seqNo, int delta, int final) = (
+  (int keyA, int keyB, int amountA, int amountB, cell addrPair, (int sigMask, cell sigA, cell sigB), int seqNo, int delta, int final) = (
     stored_data~load_uint(256),
     stored_data~load_uint(256),
     stored_data~load_grams(),
     stored_data~load_grams(),
+    stored_data~load_ref(),
     stored_data~load_sigs(),
     stored_data~load_uint(32),
     stored_data~load_grams(),
     stored_data~load_uint(1));
   stored_data.end_parse();
 
-  return (keyA, keyB, amountA, amountB, sigMask, sigA, sigB, seqNo, delta, final);
+  return (keyA, keyB, amountA, amountB, addrPair, sigMask, sigA, sigB, seqNo, delta, final);
 }
 
-() store_storage(int keyA, int keyB, int amountA, int amountB, int sigMask, cell sigA, cell sigB, int seqNo, int delta, int final) {
+() store_storage(int keyA, int keyB, int amountA, int amountB, cell addrPair, int sigMask, cell sigA, cell sigB, int seqNo, int delta, int final) {
   set_data(
     begin_cell()
     .store_uint(keyA, 256)
     .store_uint(keyB, 256)
     .store_grams(amountA)
     .store_grams(amountB)
+    .store_ref(addrPair)
     .store_sigs(sigMask, sigA, sigB)
     .store_uint(seqNo, 32)
     .store_grams(delta)
@@ -95,9 +110,30 @@ builder store_sigs(builder b, int sigMask, cell sigA, cell sigB) {
   return ();
 }
 
-;; Cleanup expired partial orders
-() recv_internal(slice message) impure {
-  ;; do nothing for internal messages
+
+() recv_internal(int msg_value, cell in_msg_cell) impure {
+  var cs = in_msg_cell.begin_parse();
+  var flags = cs~load_uint(4);  ;; int_msg_info$0 ihr_disabled:Bool bounce:Bool bounced:Bool
+  var s_addr = cs~load_msg_addr();
+  (int src_wc, int src_addr) = s_addr.parse_std_addr();
+  if ((flags & 1)) {
+    ;; source is a bounced message
+    return ();
+  }
+  ;; No payload, can ignore in_msg
+  (int keyA, int keyB, int amountA, int amountB, cell addrPair, int sigMask, cell sigA, cell sigB, int seqNo, int delta, int final) = load_storage();
+  ((int workchainA, int addrA), (int workchainB, int addrB)) = addrPair.begin_parse().preload_simple_addr_pair();
+  if ((workchainA == src_wc) & (addrA == src_addr)) {
+    amountA += msg_value;
+  } else {
+    if ((workchainB == src_wc) & (addrB == src_addr)) {
+      amountB += msg_value;
+    } else {
+      ;; Address not found
+      throw_if(33, -1);
+    }
+  }
+  return store_storage(keyA, keyB, amountA, amountB, addrPair, sigMask, sigA, sigB, seqNo, delta, final);
 }
 
 ;; incomingState$_ signatures:MaybeTwoSignatures seqNo:uint32 delta:Grams final:Bool {turnB:(seqNo % 2)} = Incoming;
@@ -107,7 +143,7 @@ builder store_sigs(builder b, int sigMask, cell sigA, cell sigB) {
   slice message_copy = message;
   (int msgSeqNo, int msgDelta, int msgFinal) = (message_copy~load_uint(32), message~load_grams(), message~load_uint(1));
 
-  (int keyA, int keyB, int amountA, int amountB, int sigMask, cell sigA, cell sigB, int seqNo, int delta, int final) = load_storage();
+  (int keyA, int keyB, int amountA, int amountB, cell addrPair, int sigMask, cell sigA, cell sigB, int seqNo, int delta, int final) = load_storage();
 
   int diff = msgSeqNo - seqNo;
   ;; Missing some inbetween state
@@ -175,23 +211,26 @@ builder store_sigs(builder b, int sigMask, cell sigA, cell sigB) {
     sigMask |= 2;
   }
 
-  if (sigMask == 3 & final) { ;; Close stuffs
+  if ((sigMask == 3) & final) { ;; Send out funds
+
+    amountA = 0;
+    amountB = 0;
   }
 
-  ;; int keyA, int keyB, int amountA, int amountB, int sigMask, cell sigA, cell sigB, int seqNo, int delta, int final
-  store_storage(keyA, keyB, amountA, amountB, sigMask, sigA, sigB, seqNo, delta, final);
+  ;; int keyA, int keyB, int amountA, int amountB, cell addrPair, int sigMask, cell sigA, cell sigB, int seqNo, int delta, int final
+  store_storage(keyA, keyB, amountA, amountB, addrPair, sigMask, sigA, sigB, seqNo, delta, final);
 }
 
 ;; Get methods
 ;;
 ;; state$_ signatures:MaybeTwoSignatures seqNo:uint32 delta:Grams final:Bool {turnB:(seqNo % 2)} = State;
-;; storage$_ keyA:PubKey keyB:PubKey amountA:Grams amountB:Grams state:State = Storage X;
+;; storage$_ keyA:PubKey keyB:PubKey amountA:Grams amountB:Grams addresses:^SimpleAddrPair state:State = Storage X;
 int seqNo() method_id {
-  return get_data().begin_parse().skip_bits(512).skip_grams().skip_grams().skip_sigs().preload_uint(32);
+  return get_data().begin_parse().skip_bits(512).skip_grams().skip_grams().skip_ref().skip_sigs().preload_uint(32);
 }
 
 int getDelta() method_id {
-  return get_data().begin_parse().skip_bits(512).skip_grams().skip_grams().skip_sigs().skip_bits(32).preload_grams();
+  return get_data().begin_parse().skip_bits(512).skip_grams().skip_grams().skip_ref().skip_sigs().skip_bits(32).preload_grams();
 }
 
 int isTurnA() method_id {
@@ -207,11 +246,28 @@ int getAmountA() method_id {
 int getAmountB() method_id {
   return get_data().begin_parse().skip_bits(512).skip_grams().preload_grams();
 }
-
+(int, int) getAddrA() method_id {
+  slice addrA = get_data().begin_parse().skip_bits(512).skip_grams().skip_grams().preload_ref().begin_parse();
+  return (addrA~load_int(8), addrA.preload_uint(256));
+}
+(int, int) getAddrB() method_id {
+  slice addrB = get_data().begin_parse().skip_bits(512).skip_grams().skip_grams().preload_ref().begin_parse().skip_bits(8 + 256);
+  return (addrB~load_int(8), addrB.preload_uint(256));
+}
 (int, cell, cell) getSignatures() method_id {
-  return get_data().begin_parse().skip_bits(512).skip_grams().skip_grams().preload_sigs();
+  return get_data().begin_parse().skip_bits(512).skip_grams().skip_grams().skip_ref().preload_sigs();
 }
 
+int hasSignatureA() method_id {
+  (int mask, _, _) = getSignatures();
+  return mask & 1;
+}
+int hasSignatureB() method_id {
+  (int mask, _, _) = getSignatures();
+  return mask & 2;  
+}
+
+
 int getHash() method_id {
-  return slice_hash(get_data().begin_parse().skip_bits(512).skip_grams().skip_grams().skip_sigs());
+  return slice_hash(get_data().begin_parse().skip_bits(512).skip_grams().skip_grams().skip_ref().skip_sigs());
 }
