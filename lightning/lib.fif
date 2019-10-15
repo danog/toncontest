@@ -35,9 +35,12 @@
 { hole dup 1 ' @ does create 1 ' ! does create } : variable-set
 { hole hole 2dup 2 { @ swap @ swap } does create 2 { rot swap ! ! } does create } : 2variable-set
 2variable-set wallet-addr wallet-addr!
-variable-set message-hash message-hash!
+variable-set delta delta!
 variable-set message-contents message-contents!
 variable-set sig-count sig-count!
+variable-set sigA sigA!
+variable-set sigB sigB!
+variable-set final final!
 
 // udata BSig ukey – ?
 {
@@ -45,97 +48,59 @@ variable-set sig-count sig-count!
 } : ed25519_chksignuu
 
 
-// Inspect multisigwrapper starting from signatures
+// Inspect state
 //
-// multiSigWrapper$_ signatures:(HashmapE 4 Signature) message:(WrappedMessage X) = MultiSigWrapperStorage X;
+// state$_ signatures:MaybeTwoSignatures seqno:uint32 delta:Grams final:Bool {turnB:(seqno % 2)} = State;
 //
 // s --
 {
-  dict@+ swap
-  dup null? abort"Empty signature list!"
-  dup 4 dictlen sig-count!
+  // twoSignatures$_ a:^Signature b:^Signature = MaybeTwoSignatures;
+  // oneSignatureA$0 a:^Signature = MaybeTwoSignatures;
+  // oneSignatureB$1 b:^Signature = MaybeTwoSignatures;
+  dup srefs
+  2 = {
+    ."Signature A: "
+    64 B@+ swap dup Bx. cr
+    sigA!
 
-  ."Signed by the following keys: "
-  4 { drop . ."- " -1 } dictforeach cr drop
+    ."Signature B: "
+    64 B@+ swap dup Bx. cr
+    sigB!
 
-  ."Hash: " dup s>c hashu dup x. cr
-  message-hash!
-
-  // modeMessage$0 mode:uint8 body:^(Message X) = ModeMessage X;
-  // wrappedMessage$_ expires_at:uint32 seqno:uint32 body:(ModeMessage X) = WrappedMessage X;
-
-  32 u@+ swap
-  dup ."Expires: " .
-  dup now < { ."(already EXPIRED!)" drop } { ."(in " now - . ."seconds)" } cond cr
+    2 sig-count!
+  } {
+    1 sig-count!
+    1 u@+ swap
+    {
+      ."Signature A: empty" cr
+      null sigA!
+      ."Signature B: "
+      64 B@+ swap dup Bx. cr
+      sigB!
+    }
+    {
+      ."Signature A: "
+      64 B@+ swap dup Bx. cr
+      sigA!
+      ."Signature B: empty" cr
+      null sigB!
+    }
+    cond
+  } cond
 
   32 u@+ swap
   ."Seqno: " . cr
 
+  Gram@+ swap
+  dup ."Delta grams: " . cr
+  delta!
+
   1 u@+ swap
-  {
-    ."Is code message!" cr
-    // codeMessage$1 minSigs:(## 4) keys:(HashmapE 4 PubKey) code:^Cell = ModeMessage X;
-    
-    4 u@+ swap
-    ."Minsigs: " . cr
+  dup ."Final? " { ."Yes" } { ."No" } cond
+  final!
 
-    dict@+ swap
-    dup null? abort"Empty key list!"
-      
-    ."The following keys are present: " cr
-    4 { swap ."* " . ."- " 32 B@ Bx. cr -1 } dictforeach cr drop
-
-    ref@
-    ."Code: " <s csr.
-  }
-  {
-    8 u@+ swap
-    ."Mode: " . cr
-
-    // Now on to the actual message we're agreeing to sign
-    //
-    //  int_msg_info$0 ihr_disabled:Bool bounce:Bool bounced:Bool
-    //    src:MsgAddressInt dest:MsgAddressInt 
-    //    value:CurrencyCollection ihr_fee:Grams fwd_fee:Grams
-    //    created_lt:uint64 created_at:uint32 = CommonMsgInfo;
-    //  ext_in_msg_info$10 src:MsgAddressExt dest:MsgAddressInt 
-    //     import_fee:Grams = CommonMsgInfo;
-    //  ext_out_msg_info$11 src:MsgAddressInt dest:MsgAddressExt
-    //    created_lt:uint64 created_at:uint32 = CommonMsgInfo;
-    ."=>" cr ref@ <s
-
-    1 u@+ swap
-    { // External message *$1*
-      ."Inside: external message" cr
-    }
-    { // Internal message int_msg_info$0
-      ."Inside: internal message" cr
-      1 u@+ swap
-      ."Instant hypercube routing disabled? " . cr
-
-      1 u@+ swap
-      ."Bounce flag set? " . cr
-
-      1 u@+ swap
-      // ."Bounced flag set? " . cr
-      drop
-
-      2 u@+ nip // Drop src address constructor + flags
-
-      3 u@+ swap // Read dst address constructor + flags
-      // addr_std$10 anycast 0 => 100 => 4
-      4 <> abort"Unsupported address!" // Make things simple for now
-
-      8 i@+
-      256 u@+ -rot
-      ."Destination address: " .addr cr
- 
-      Gram@+ swap
-      ."Grams: " .GR cr
-    } cond
-    drop
-  } cond
-} : inspect-multisig
+  drop
+} : inspect-state
 
 // Inspects contents of cell provided on top of the stack
 // c -- 
@@ -197,39 +162,38 @@ variable-set sig-count sig-count!
     { ref@ <s } if // Load ref
     dup message-contents!
 
-    // multiSigWrapper$0 signatures:(HashmapE 4 Signature) message:(WrappedMessage X) = MultiSigWrapper X;
-    1 u@+ swap
-    dup ."Message version: " . cr
-    abort"Unsupported message version!"
-
-    inspect-multisig
+    inspect-state
 } : inspect
 
-// storage$_ seqno:uint32 minSigs:(## 4) keys:(HashmapE 4 PubKey) messages:(HashmapE 256 (MultiSigWrapperStorage X)) = Storage X;
+// storage$_ keyA:PubKey keyB:PubKey amountA:Grams amountB:Grams addresses:^SimpleAddrPair state:State = Storage X;
 // c --
 {
   <s
-    32 u@+ swap
-    ."Seqno: " . cr
+    256 u@+ swap
+    ."Key A: " x. cr
 
-    4 u@+ swap
-    ."Minsigs: " . cr
+    256 u@+ swap
+    ."Key B: " x. cr
 
-    dict@+ swap
-    ."Keys: " 4 dictlen . cr
+    Gram@+ swap
+    ."Gram amount A: " x. cr
 
-    dict@
-    ."Messages: " dup 256 dictlen . cr
+    Gram@+ swap
+    ."Gram amount B: " x. cr
 
-    256
-    {
-      cr ."Inspecting message " swap x. cr 
+    ref@+
 
-      4 u@+ swap
-      ."Signature count: " dup . cr
-      sig-count!
+    8 u@+
+    256 u@+
+    0
+    ."Address A" .addr
+    8 u@+
+    256 u@+
+    0
+    ."Address B" .addr
 
-      inspect-multisig
-      -1
-    } dictforeach drop
+    drop
+
+    ."State:"
+    inspect-state
 } : inspect-storage

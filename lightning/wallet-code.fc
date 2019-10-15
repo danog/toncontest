@@ -26,9 +26,9 @@ slice skip_ref(slice s) asm "LDREF" "NIP";
 ;;
 slice skip_sigs(slice data) {
   if (data.slice_refs() == 2) {
-    return data;
+    return data.skip_ref().skip_ref();
   } else {
-    return data.skip_bits(1);
+    return data.skip_bits(1).skip_ref();
   }
 }
 

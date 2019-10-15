@@ -3,48 +3,104 @@
 "lib.fif" include
 
 {
-  ."usage: " @' $0 type ." <input> <output> <key> <key-id>" cr
-  ."Signs multisig <input>.boc file with private key <key-id> loaded from file <key>.pk and writes result to <output>.boc" cr 1 halt
+  ."usage: " @' $0 type ." <state-base> <key> <seqno>" cr
+  ."Signs pending state <state-base>-state<seqno>.boc file with private key <key>.pk and writes result to <state-base>-state<seqno>c.boc" cr 1 halt
 } : usage
-$# 4 < ' usage if
+$# 3 < ' usage if
 
-$1 =: input-file
-$2 =: output-file
-$3 =: key
-$4 parse-int =: key-id
+$1 =: state-base
+$2 =: key
+$3 parse-int =: seqno
 
-input-file +".boc" load-boc constant order
+
+state-base +"-state" seqno (.) $+ +".boc" const previous-state
+state-base +"-state" seqno (.) $+ +"c.boc" const new-statec
+state-base +"-state" seqno (.) $+ +"c-ext.boc" const new-statec-ext
+
+."State file: " previous-state type cr 
+previous-state file-exists? not { ."The state file was not created! Ask the other user to generate and send you a new state, first." cr 1 halt } if
+
+previous-state file>B B>boc inspect-state
+sig-count 2 == { ."Too many signatures in previous state, need 1, have 2" cr 1 halt } if
+sigA null? {
+  0 const wasA
+  0 const isA
+} {
+  -1 const wasA
+  -1 const isB
+} cond
+
+// turnB isA
+// 1     0 => 1 OK
+// 1     1 => 0 not OK
+// 0     0 => 0 not OK
+// 0     1 => 1 OK
+
+seqno 2 mod waA xor 1 <> {
+  ."Not his turn!" cr 1 halt
+} if
+
+
 key +".pk" load-keypair nip constant wallet_pk
+state-base +".addr" load-address
+2dup 2constant wallet-addr
+."Lightning wallet address = " 2dup .addr cr 6 .Addr cr
+key +".pk" load-keypair nip constant privkey
 
-order inspect cr 
+."Signing new delta " delta .GR ."..." cr 
+// New state
+// state$_ signatures:MaybeTwoSignatures seqno:uint32 delta:Grams final:Bool {turnB:(seqno % 2)} = State;
 
-// multiSigWrapper$0 signatures:(HashmapE 4 Signature) message:(WrappedMessage X) = MultiSigWrapper X;
-message-contents
-  1 u@+ nip   // $0 was already verified
-  
-  // multiSigWrapper$0 signatures:(HashmapE 4 Signature) message:(WrappedMessage X) = MultiSigWrapper X;
-  dict@+
-  s>c    // Message on top, signatures underneath
+<b
+  seqno 32 u,
+  delta Gram,
+  final 1 u,
+b>
 
-dup ."signing message: " <s csr. cr
-dup hash wallet_pk ed25519_sign_uint
+dup ."Signing new state with seqno " seqno . .": " <s csr. cr
+dup hash privkey ed25519_sign_uint
+// signature$_ R:bits256 s:bits256 = Signature;
+<b swap B, b>
+// twoSignatures$_ a:^Signature b:^Signature = MaybeTwoSignatures;
+<b 
+  swap ref,
+b>
 
-256 B>u@+ swap 256 B>u@ swap
-<b swap 256 u, swap 256 u, b> <s
+// state$_ signatures:MaybeTwoSignatures seqno:uint32 delta:Grams final:Bool {turnB:(seqno % 2)} = State;
+<b
+  swap <s s,
+  swap <s s,
+b>
 
-rot
-// Now we have (message) value dict
+dup ."Signed new state with seqno " seqno . ."is: " <s csr. cr
+dup 2 boc+>B dup Bx. cr
+new-state tuck B>file
+."(Saved zerostate to file " type .")" cr
 
-// udict! => value key dict bits
-key-id swap 4 udict! not abort"Failure adding signature!"
 
-// Now we have message dict
-// multiSigWrapper$0 signatures:(HashmapE 4 Signature) message:(WrappedMessage X) = MultiSigWrapper X;
-<b 0 1 u, swap dict, swap <s s, b>
+//
+// addr_none$00 = MsgAddressExt;
+// addr_extern$01 len:(## 9) external_address:(bits len) 
+//              = MsgAddressExt;
+// anycast_info$_ depth:(#<= 30) { depth >= 1 }
+//    rewrite_pfx:(bits depth) = Anycast;
+// addr_std$10 anycast:(Maybe Anycast) 
+//    workchain_id:int8 address:bits256  = MsgAddressInt;
+// addr_var$11 anycast:(Maybe Anycast) addr_len:(## 9) 
+//    workchain_id:int32 address:(bits addr_len) = MsgAddressInt;
+//
+// ext_in_msg_info$10 src:MsgAddressExt dest:MsgAddressInt 
+//  import_fee:Grams = CommonMsgInfo;
+//
+//
+// message$_ {X:Type} info:CommonMsgInfo
+//   init:(Maybe (Either StateInit ^StateInit))
+//   body:(Either X ^X) = Message X;
+//
+<b b{1000100} s, wallet-addr addr, 0 Gram, b{00} s,
+   swap <s s, b>
 
-// Renerate external message
-<b 68 7 u, wallet-addr addr, 0 Gram, 0 1 u, swap maybe-ref, b>
-
+dup ."resulting external message: " <s csr. cr
 2 boc+>B dup Bx. cr
-output-file +".boc" tuck B>file
-."Saved new multisigned message to file " type cr
+new-state-ext tuck B>file
+."(Saved to file " type .")" cr
