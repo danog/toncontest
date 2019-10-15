@@ -20,11 +20,11 @@ state-base +"-state" seqno (.) $+ +"c-ext.boc" const new-statec-ext
 ."State file: " previous-state type cr 
 previous-state file-exists? not { ."The state file was not created! Ask the other user to generate and send you a new state, first." cr 1 halt } if
 
-previous-state file>B B>boc inspect-state
+previous-state file>B B>boc <s inspect-state
 sig-count 2 == { ."Too many signatures in previous state, need 1, have 2" cr 1 halt } if
 sigA null? {
   0 const wasA
-  0 const isA
+  0 const isB
 } {
   -1 const wasA
   -1 const isB
