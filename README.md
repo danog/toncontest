@@ -18,8 +18,8 @@ This will automatically build the lite client, fift and func, and will also edit
 
 ## Contents
 
-* `toolchain` - Some automatic builder scripts and wrappers around the funC compiler and fift, along with tweaked zerostate generator and testgiver scripts
-* `wallet` - Advanced upgradable multisignature wallet
+* `wallet` - Advanced upgradable multisignature wallet, along with a TON collator emulator testing suite written in FIFT, and some scripts to test the wallet using the actual TON collator.
+* `toolchain` - Some automatic builder scripts and wrappers around the funC compiler and fift, along with a tweaked zerostate generator and testgiver scripts.
 * `test` - A small bugreport about issues with fift exception traces
 * [GitHub issues and bugreports](https://github.com/ton-blockchain/ton/issues?utf8=%E2%9C%93&q=author%3Adanog+):
   * [#59, bug in funC compiler](https://github.com/ton-blockchain/ton/issues/59)

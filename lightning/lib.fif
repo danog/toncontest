@@ -75,6 +75,8 @@ variable-set final final!
     sigB!
     drop
 
+    sigA sigB B= { ."The two signatures are the same!" cr 1 halt } if
+
     2 sig-count!
   } {
     1 sig-count!
@@ -191,19 +193,20 @@ variable-set final final!
     Gram@+ swap
     ."Gram amount B: " .GR cr
 
-    ref@+
+    ref@+ <s
 
     8 u@+
     256 u@+
-    0
-    ."Address A" .addr
+    -rot 0
+    ."Address A: " .Addr cr
+
     8 u@+
     256 u@+
-    0
-    ."Address B" .addr
+    -rot 0
+    ."Address B: " .Addr cr
 
     drop
 
-    ."State:"
+    ."State: =>" cr
     inspect-state
 } : inspect-storage

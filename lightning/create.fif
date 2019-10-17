@@ -20,7 +20,7 @@ $4 parse-int =: seqno
 $5 $>GR =: amount
 
 
-def? $6 { @' $6 } { 0 } cond constant final
+def? $6 { @' $6 parse-int } ' 0 cond constant final
 
 amount 0 < abort"Amount cannot be smaller than 0!"
 // seqno 2 mod =: turnB
@@ -42,6 +42,7 @@ state-base +"-state" prevseqno (.) $+ +"c.boc" const previous-statec
 state-base +"-state" seqno (.) $+ +".boc" const new-state
 state-base +"-state" seqno (.) $+ +"-ext.boc" const new-state-ext
 
+."Preparing to create new state file: " new-state type ."..." cr
 ."Previous state file: " previous-state type cr 
 previous-state file-exists? not { ."The previous state file was not created! Ask the other user to generate and send you a new state, first." cr 1 halt } if
 ."Confirmed previous state file: " previous-statec type cr 
@@ -52,7 +53,7 @@ sig-count 2 <> { ."Not enough signatures in previous state, need 2, have 1" cr 1
 
 state-base +".addr" load-address
 2dup 2constant wallet-addr
-."Lightning wallet address = " 2dup .addr cr 6 .Addr cr
+."Lightning wallet address = " 2dup .addr ." - " 6 .Addr cr
 key +".pk" load-keypair nip constant privkey
 
 ."Transferring " amount .GR ."to other user..." cr 
@@ -78,7 +79,7 @@ isA {
   final 1 u,
 b>
 
-dup ."Signing new state with seqno " seqno . .": " <s csr. cr
+."Signing new state with seqno " seqno . cr // .": " // <s csr. cr // Do not spam logs
 dup hash privkey ed25519_sign_uint
 // signature$_ R:bits256 s:bits256 = Signature;
 <b swap B, b>
@@ -95,7 +96,7 @@ b>
   swap <s s,
 b>
 
-dup ."Signed new state with seqno " seqno . ."is: " <s csr. cr
+."Signed new state with seqno " seqno . cr // ."is: " // <s csr. cr Do not spam logs
 dup 2 boc+>B dup Bx. cr
 new-state tuck B>file
 ."(Saved zerostate to file " type .")" cr
@@ -123,7 +124,9 @@ new-state tuck B>file
 <b b{1000100} s, wallet-addr addr, 0 Gram, b{00} s,
    swap <s s, b>
 
-dup ."resulting external message: " <s csr. cr
+."resulting external message: " cr // <s csr. cr // DO not spam logs
 2 boc+>B dup Bx. cr
 new-state-ext tuck B>file
 ."(Saved to file " type .")" cr
+
+cr cr

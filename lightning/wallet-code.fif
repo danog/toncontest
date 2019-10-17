@@ -1,6 +1,7 @@
 "Asm.fif" include
 // automatically generated from `/home/daniil/repos/contest/lib/crypto/smartcont/stdlib.fc` `wallet-code.fc` 
 PROGRAM{
+  DECLPROC store_sgrams
   DECLPROC ~load_sgrams
   DECLPROC preload_sgrams
   DECLPROC ~load_simple_addr_pair
@@ -25,6 +26,23 @@ PROGRAM{
   115661 DECLMETHOD hasSignatureA
   127918 DECLMETHOD hasSignatureB
   120167 DECLMETHOD getHash
+  store_sgrams PROC:<{
+    DUP
+    0 LESSINT
+    IFJMP:<{
+      1 PUSHINT
+      ROT
+      1 STU
+      SWAP
+      NEGATE
+      STGRAMS
+    }>
+    0 PUSHINT
+    ROT
+    1 STU
+    SWAP
+    STGRAMS
+  }>
   ~load_sgrams PROC:<{
     1 LDU
     SWAP
@@ -143,7 +161,8 @@ PROGRAM{
     ~load_sigs CALLDICT
     s0 s3 XCHG
     32 LDU
-    LDGRAMS
+    ~load_sgrams CALLDICT
+    SWAP
     1 LDU
     ENDS
     s4 s5 XCHG
@@ -165,7 +184,7 @@ PROGRAM{
     store_sigs CALLDICT
     32 STU
     SWAP
-    STGRAMS
+    store_sgrams CALLDICT
     1 STU
     ENDC
     c4 POP
@@ -214,15 +233,17 @@ PROGRAM{
     ~load_sigs CALLDICT
     s3 PUSH
     32 LDU
-    DROP
-    s0 s4 XCHG
-    LDGRAMS
+    ~load_sgrams CALLDICT
+    SWAP
     1 LDU
+    DROP
     load_storage CALLDICT
+          DUMPSTK
+
     s3 POP
     s3 POP
     s4 POP
-    s14 s3 PUSH2
+    s10 s3 PUSH2
     SUB
     s4 POP
     s3 PUSH
@@ -236,61 +257,60 @@ PROGRAM{
       s2 POP
       3 EQINT
       35 THROWIFNOT
-      s7 PUSH
+      s6 PUSH
       0 PUSHINT
       s0 s2 XCHG
       SUB
-      s12 PUSH
+      s8 PUSH
       1 MODPOW2#
-      s13 POP
-      s0 s12 XCHG
+      s9 POP
+      s0 s8 XCHG
       IF:<{
         s2 POP
-        s0 s10 XCHG
+        s0 s6 XCHG
         0 LESSINT
         36 THROWIF
-        s9 s5 PUSH2
+        s5 s4 PUSH2
         SUB
-        s6 POP
-        s9 POP
-        s0 s4 XCHG
+        s5 POP
+        s5 POP
+        s0 s3 XCHG
         0 LESSINT
         37 THROWIF
       }>ELSE<{
         NIP
-        s0 s10 XCHG
+        s0 s6 XCHG
         0 GTINT
         36 THROWIF
-        s0 s5 PUSH2
+        s0 s4 PUSH2
         ADD
         NIP
-        s5 POP
-        s0 s4 XCHG
+        s4 POP
+        s0 s3 XCHG
         0 LESSINT
         37 THROWIF
       }>
     }>ELSE<{
       s3 POP
       s3 POP
-      s11 POP
+      s7 POP
       OVER
       3 EQINT
       35 THROWIF
-      s6 s6 XCPU
+      s5 s5 XCPU
       EQUAL
-      s6 POP
-      s0 s5 XCHG
+      s5 POP
+      s0 s4 XCHG
       38 THROWIFNOT
-      s3 s8 XCPU
+      s2 s4 XCPU
       EQUAL
       39 THROWIFNOT
-      s3 s7 XCHG
-      s2 s3 XCHG
+      s1 s3 s0 XCHG3
     }>
     ACCEPT
-    SWAP
+    s0 s7 XCHG
     HASHSU
-    s7 PUSH
+    s3 PUSH
     NOT
     s1 s7 XCHG
     AND
@@ -304,15 +324,16 @@ PROGRAM{
       s0 s5 XCHG
       9 PUSHPOW2
       PLDSLICEX
-      s6 s1 s(-1) PU2XC
+      s6 s7 s(-1) PU2XC
       CHKSIGNU
-      NIP
+      s7 POP
+      s0 s6 XCHG
       39 THROWIFNOT
-      s0 s5 XCHG
+      SWAP
       1 PUSHINT
       OR
     }>ELSE<{
-      s7 s1 s5 XCHG3
+      s3 s7 s5 XCHG3
       2DROP
     }>
     s0 s3 XCHG

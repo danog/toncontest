@@ -7,6 +7,13 @@ int udict_has?(cell dict, int key_len, int index) asm(index dict key_len) "DICTU
 slice skip_grams(slice s) asm "LDGRAMS" "NIP";
 int preload_grams(slice s) asm "LDGRAMS" "DROP";
 
+builder store_sgrams(builder b, int grams) {
+  if (grams < 0) {
+    return b.store_uint(1, 1).store_grams(- grams);
+  }
+  return b.store_uint(0, 1).store_grams(grams);
+}
+
 (slice, int) ~load_sgrams(slice s) {
   int neg = s~load_uint(1);
   if (neg) {
@@ -92,7 +99,7 @@ builder store_sigs(builder b, int sigMask, cell sigA, cell sigB) {
 ;; storage$_ keyA:PubKey keyB:PubKey amountA:Grams amountB:Grams addresses:^SimpleAddrPair state:State = Storage X;
 ;;
 ;; int keyA, int keyB, int amountA, int amountB, cell addrPair, int sigMask, cell sigA, cell sigB, int seqNo, int delta, int final
-(int, int, int, int, cell, int, cell, cell, int, int, int) load_storage() {
+(int, int, int, int, cell, (int, cell, cell), int, int, int) load_storage() {
   slice stored_data = get_data().begin_parse();
   (int keyA, int keyB, int amountA, int amountB, cell addrPair, (int sigMask, cell sigA, cell sigB), int seqNo, int delta, int final) = (
     stored_data~load_uint(256),
@@ -102,11 +109,11 @@ builder store_sigs(builder b, int sigMask, cell sigA, cell sigB) {
     stored_data~load_ref(),
     stored_data~load_sigs(),
     stored_data~load_uint(32),
-    stored_data~load_grams(),
+    stored_data~load_sgrams(),
     stored_data~load_uint(1));
   stored_data.end_parse();
 
-  return (keyA, keyB, amountA, amountB, addrPair, sigMask, sigA, sigB, seqNo, delta, final);
+  return (keyA, keyB, amountA, amountB, addrPair, (sigMask, sigA, sigB), seqNo, delta, final);
 }
 
 () store_storage(int keyA, int keyB, int amountA, int amountB, cell addrPair, int sigMask, cell sigA, cell sigB, int seqNo, int delta, int final) {
@@ -119,7 +126,7 @@ builder store_sigs(builder b, int sigMask, cell sigA, cell sigB) {
     .store_ref(addrPair)
     .store_sigs(sigMask, sigA, sigB)
     .store_uint(seqNo, 32)
-    .store_grams(delta)
+    .store_sgrams(delta)
     .store_uint(final, 1)
     .end_cell());
   return ();
@@ -136,7 +143,7 @@ builder store_sigs(builder b, int sigMask, cell sigA, cell sigB) {
     return ();
   }
   ;; No payload, can ignore in_msg
-  (int keyA, int keyB, int amountA, int amountB, cell addrPair, int sigMask, cell sigA, cell sigB, int seqNo, int delta, int final) = load_storage();
+  (int keyA, int keyB, int amountA, int amountB, cell addrPair, (int sigMask, cell sigA, cell sigB), int seqNo, int delta, int final) = load_storage();
   ((int workchainA, int addrA), (int workchainB, int addrB)) = addrPair.begin_parse().preload_simple_addr_pair();
   if ((workchainA == src_wc) & (addrA == src_addr)) {
     amountA += msg_value;
@@ -156,9 +163,9 @@ builder store_sigs(builder b, int sigMask, cell sigA, cell sigB) {
 () recv_external(slice message) impure {
   (int msgSigMask, cell msgSigA, cell msgSigB) = message~load_sigs();
   slice message_copy = message;
-  (int msgSeqNo, int msgDelta, int msgFinal) = (message_copy~load_uint(32), message~load_grams(), message~load_uint(1));
+  (int msgSeqNo, int msgDelta, int msgFinal) = (message_copy~load_uint(32), message_copy~load_sgrams(), message_copy~load_uint(1));
 
-  (int keyA, int keyB, int amountA, int amountB, cell addrPair, int sigMask, cell sigA, cell sigB, int seqNo, int delta, int final) = load_storage();
+  (int keyA, int keyB, int amountA, int amountB, cell addrPair, (int sigMask, cell sigA, cell sigB), int seqNo, int delta, int final) = load_storage();
 
   int diff = msgSeqNo - seqNo;
   ;; Missing some inbetween state

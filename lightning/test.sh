@@ -7,36 +7,55 @@ ord() { LC_CTYPE=C printf '%d' "'$1"; }
 {
     mkdir -p tests
     cd tests
-    # Create 10 public keys
-    for f in {a..j}; do fift -s ../gen-pub.fif $f;done
+    # Create 2 wallets, with 2 public/private keypairs
+    fift -s ../../lib/crypto/smartcont/new-wallet-v2.fif 0 wallA | tee logwallA
+    fift -s ../../lib/crypto/smartcont/new-wallet-v2.fif 0 wallB | tee logwallB
 
-    # Create wallet with those 10 public keys on workchain 0, requiring all 10 signatures to send a message
-    fift -s ../wallet-create.fif 0 pony 10 10 {a..j} | tee log
+    sed '/Non-bounceable address [(]for init[)]: /!d;s/.* //g' logwallA > initaddrwallA.addr
+    sed '/Non-bounceable address [(]for init[)]: /!d;s/.* //g' logwallB > initaddrwallB.addr
+
+    addrwallA=$(sed '/Bounceable address [(]for later access[)]: /!d;s/.* //g' logwallA)
+    addrwallB=$(sed '/Bounceable address [(]for later access[)]: /!d;s/.* //g' logwallB)
+
+    # Generate public key files
+    fift -s ../gen-pub.fif wallA
+    fift -s ../gen-pub.fif wallB
+
+    # Create wallet with those 2 public keys and and addresses
+    fift -s ../wallet-create.fif 0 pony wallA wallB $addrwallA $addrwallB | tee log
 
     # Get wallet address
     sed '/Non-bounceable address [(]for init[)]: /!d;s/.* //g' log > naddr.addr
 
     address=$(sed '/Bounceable address [(]for later access[)]: /!d;s/.* //g' log)
     rm log
+    rm logwallA
+    rm logwallB
+    echo
 
-    # Create a new wallet query signed with key a (ID 0), transferring 10 grams to the wallet itself
-    fift -s ../create.fif pony a 0 $address 0 10 a
+    # Sign zerostate with key B
+    fift -s ../sign.fif pony wallB 0
 
-    # Here, note the `a 0`: to save space, I have chosen to not use the entire ecdh key as key in the signature dictionary.
-    # Instead, a **key ID** is used to distinguish signatures made by certain keys: this is a simple 4-bit value (instead of 256 bits!), equal to the position of the key in the `wallet-create` argument list.
-    # In this case, the `a` key was the first key (`{a..j}` in Bash is shorthand for `a b c .. j`), so the ID is `0`.
-    # What follows is the address, the seqno, the amount of grams and the savefile (`a`) for the query.
+    # Create a new wallet query (seqno 1) signed with key B (not creator A), transferring 5 grams to the other user (A)
+    fift -s ../create.fif pony wallB 0 1 5 0 # Not final
 
+    # Sign new state with key A
+    fift -s ../sign.fif pony wallA 1
 
+    # Create a new wallet query (seqno 2) signed with creator key A), transferring 3 grams to the other user (B)
+    fift -s ../create.fif pony wallA 1 2 3   # Not final
 
-    # Sign the query using all keys separately, creating eight more boc files, each signed by two keys only (0 and 1..9)
-    for f in {1..9}; do fift -s ../sign.fif a $(chr $((97+f))) $(chr $((97+f))) $f;done
+    # Sign new state with key B
+    fift -s ../sign.fif pony wallB 2
 
-    # Merge all queries
-    fift -s ../merge.fif {a..j} merge
+    # Create a new wallet query (seqno 1) signed with key B (not creator A), transferring 0 grams to the other user (A)
+    fift -s ../create.fif pony wallB 0 3 0 0 # Not final
 
-    # Inspect queries
-    fift -s ../inspect.fif merge
+    # Sign new state with key A
+    fift -s ../sign.fif pony wallA 3
+
+    # Inspect final state 3
+    fift -s ../inspect.fif pony-state3c
 
     # Finally run the generated files in the VM
     #
@@ -49,9 +68,11 @@ ord() { LC_CTYPE=C printf '%d' "'$1"; }
     #
     fift -s ../test.fif \
         pony-create \
-        a -1 \
-        0 85143 \
-        0 113609 \
-        merge -1 \
-        0 113609
+        pony-state0c-ext -1 \
+        pony-state1c-ext -1 \
+        pony-state1-ext -1 \
+        pony-state2-ext -1 \
+        pony-state2c-ext -1 \
+        pony-state3-ext -1 \
+        pony-state3c-ext -1
 } 2>&1 | less -R
